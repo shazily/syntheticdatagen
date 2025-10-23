@@ -53,27 +53,29 @@ An intelligent, web-based synthetic data generation platform featuring dual inte
                       └─────────┘
 ```
 
-## 📸 Screenshots
+## 🎯 Key Features
 
-### Main Interface
-![Main Interface](screenshots/main-interface.png)
-*Clean, modern interface with dual generation modes*
+### 🤖 **AI-Powered Generation**
+- Natural language processing with Ollama LLM
+- Intelligent schema interpretation and creation
+- RAG system for continuous learning
 
-### AI Mode
-![AI Mode](screenshots/ai-mode.png)
-*Natural language data generation with intelligent schema interpretation*
+### 🎯 **Drag & Drop Builder**
+- Visual schema builder with 30+ field types
+- Real-time preview and modification
+- Custom field type definitions
 
-### Schema Builder
-![Schema Builder](screenshots/schema-builder.png)
-*Drag-and-drop visual schema builder with 30+ field types*
+### 📊 **Multiple Export Formats**
+- **CSV** - Comma-separated values
+- **Excel** - XLSX format with formatting
+- **JSON** - Structured data format
+- **XML** - Extensible markup language
+- **SQL** - CREATE TABLE and INSERT statements
 
-### Admin Dashboard
-![Admin Dashboard](screenshots/admin-dashboard.png)
-*Comprehensive analytics dashboard with usage monitoring and AI insights*
-
-### Export Formats
-![Export Formats](screenshots/export-formats.png)
-*Multiple export options: CSV, Excel, JSON, XML, and SQL*
+### 🗄️ **SQL Query Generation**
+- Automatic CREATE TABLE statements
+- INSERT statements with proper escaping
+- Database-ready SQL output
 
 ## 🚀 Quick Start
 
@@ -157,11 +159,29 @@ That's it! 🎉 You're ready to generate data.
 
 Access the admin dashboard at `/admin.html` to monitor:
 
-1. **Usage Analytics** - Track total chats, success rates, and user feedback
-2. **AI Performance** - Monitor AI response quality and error rates
-3. **Feedback Management** - View and export user feedback data
-4. **Vector Database** - Manage RAG system and schema learning
-5. **Performance Insights** - Charts and analytics for optimization
+#### 📊 **Usage Analytics**
+- 💬 **Total Chats** - Track conversation count and engagement
+- ✅ **Success Rate** - Monitor AI generation success percentage
+- 👍 **User Feedback** - Thumbs up/down ratings and comments
+- ⭐ **Quality Ratings** - Star ratings for generated data quality
+
+#### 🧠 **AI Performance Monitoring**
+- 📈 **Performance Charts** - Visual analytics for AI effectiveness
+- 🎯 **Success vs Errors** - Error rate tracking and analysis
+- 📝 **Top Requested Topics** - Most popular data generation requests
+- 🔍 **Chat Log Analysis** - Detailed conversation history and patterns
+
+#### 🗄️ **Vector Database Management**
+- 🏢 **Domain Collections** - Manage different data domains
+- 📊 **Vector Statistics** - Total domains, vectors, and collection status
+- 🔄 **Update Existing** - Refresh and improve existing domain knowledge
+- ➕ **Add New Domains** - Expand AI knowledge base with new data types
+
+#### 📥 **Data Export & Management**
+- 📊 **Feedback Export** - Download user feedback as CSV
+- 🔍 **Search & Filter** - Find specific conversations and feedback
+- 📈 **Analytics Export** - Export performance data for reporting
+- 🎛️ **System Controls** - Manage RAG system and AI learning
 
 **Perfect for:**
 - Monitoring platform usage and performance
