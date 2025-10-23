@@ -1,0 +1,269 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-intelligent-v3",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [-800, -200],
+      "webhookId": "generate-intelligent-v3-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare search text for Qdrant search\nconst webhookData = $input.item.json;\nconst searchText = webhookData.body.chatInput;\n\n// Create document for search (ai_document input)\nconst searchDocument = {\n  pageContent: searchText,\n  metadata: {\n    search_query: searchText,\n    timestamp: new Date().toISOString()\n  }\n};\n\nreturn {\n  json: {\n    document: searchDocument,\n    searchText: searchText,\n    originalData: webhookData\n  }\n};"
+      },
+      "id": "prepare-search",
+      "name": "Prepare Search",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-600, -200]
+    },
+    {
+      "parameters": {
+        "operation": "getMany",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "successful_schemas",
+          "mode": "list",
+          "cachedResultName": "successful_schemas"
+        },
+        "prompt": "={{ $json.searchText }}",
+        "limit": 3
+      },
+      "id": "search-qdrant",
+      "name": "Search Qdrant",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1,
+      "position": [-400, -200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build enhanced system message with retrieved examples\nconst searchResults = $input.item.json || [];\nconst webhookData = $('Webhook Trigger').item.json;\n\nlet enhancedSystemMessage = \"You are a specialized synthetic data generator assistant. Generate test/dummy/sample data for various use cases.\\n\\nRESPONSE FORMAT (JSON only):\\n{\\n  \\\"message\\\": \\\"Brief explanation\\\",\\n  \\\"schema\\\": [\\n    {\\\"name\\\": \\\"field_name\\\", \\\"type\\\": \\\"field_type\\\"}\\n  ],\\n  \\\"recordCount\\\": number (max 1000)\\n}\\n\\n\";\n\n// Add retrieved examples if found\nif (searchResults.length > 0) {\n  enhancedSystemMessage += \"\\nRELEVANT EXAMPLES FROM VECTOR DATABASE:\\n\";\n  searchResults.forEach((result, index) => {\n    const metadata = result.metadata || {};\n    const score = (result.score * 100).toFixed(0);\n    enhancedSystemMessage += `Example ${index + 1} (${score}% similar): ${metadata.user_prompt || 'N/A'}\\n`;\n    if (metadata.schema) {\n      enhancedSystemMessage += `Schema: ${metadata.schema}\\n\\n`;\n    }\n  });\n  enhancedSystemMessage += \"Use these examples as inspiration for your response.\\n\\n\";\n}\n\nreturn {\n  json: {\n    systemMessage: enhancedSystemMessage,\n    retrievedExamples: searchResults.length,\n    webhookData: webhookData.body\n  }\n};"
+      },
+      "id": "build-prompt",
+      "name": "Build Enhanced Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-200, -200]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook Trigger').item.json.body.sessionId }}",
+        "contextWindowLength": 10
+      },
+      "id": "chat-memory",
+      "name": "Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [-200, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Webhook Trigger').item.json.body.chatInput }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "={{ $('Build Enhanced Prompt').item.json.systemMessage }}"
+        }
+      },
+      "id": "ai-agent",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.8,
+      "position": [0, -200]
+    },
+    {
+      "parameters": {
+        "model": "llama3.2:latest",
+        "options": {
+          "temperature": 0.7,
+          "keepAlive": "1h",
+          "numCtx": 2048
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [-200, 100],
+      "id": "ollama-chat",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "jmFnQptmLMNT8nwD",
+          "name": "Ollama account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse AI response\nconst aiOutput = $input.item.json.output || '';\n\nlet parsedResponse;\ntry {\n  // Find first JSON object\n  let braceCount = 0;\n  let startIndex = -1;\n  let endIndex = -1;\n  \n  for (let i = 0; i < aiOutput.length; i++) {\n    if (aiOutput[i] === '{') {\n      if (braceCount === 0) startIndex = i;\n      braceCount++;\n    } else if (aiOutput[i] === '}') {\n      braceCount--;\n      if (braceCount === 0 && startIndex !== -1) {\n        endIndex = i;\n        break;\n      }\n    }\n  }\n  \n  if (startIndex !== -1 && endIndex !== -1) {\n    const jsonStr = aiOutput.substring(startIndex, endIndex + 1);\n    parsedResponse = JSON.parse(jsonStr);\n  } else {\n    throw new Error('No JSON found');\n  }\n} catch (error) {\n  // Fallback\n  parsedResponse = {\n    message: \"Generating sample data for you.\",\n    schema: [\n      {name: \"id\", type: \"uuid\"},\n      {name: \"name\", type: \"firstName\"},\n      {name: \"email\", type: \"email\"}\n    ],\n    recordCount: 100\n  };\n}\n\nreturn {\n  json: {\n    parsedResponse: parsedResponse,\n    rag_enhanced: $('Build Enhanced Prompt').item.json.retrievedExamples > 0\n  }\n};"
+      },
+      "id": "response-parser",
+      "name": "Response Parser",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [200, -200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [400, -200]
+    },
+    {
+      "parameters": {
+        "model": "llama3.2:latest"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [-400, 0],
+      "id": "embeddings-ollama",
+      "name": "Embeddings Ollama",
+      "credentials": {
+        "ollamaApi": {
+          "id": "jmFnQptmLMNT8nwD",
+          "name": "Ollama account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [-200, 0],
+      "id": "default-data-loader",
+      "name": "Default Data Loader"
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Search": {
+      "main": [
+        [
+          {
+            "node": "Search Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Build Enhanced Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Enhanced Prompt": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Response Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response Parser": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Ollama": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Search Qdrant",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Search Qdrant",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "528341b2e86c53477b94f918c416779dab805188fc81ebe05aeea5067b309de6"
+  }
+}

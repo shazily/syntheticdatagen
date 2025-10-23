@@ -1,0 +1,156 @@
+{
+  "name": "RAG Simple Working",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-intelligent-v3-learn",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [-800, 0],
+      "typeVersion": 1.1,
+      "webhookId": "generate-intelligent-v3-learn-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "user-prompt",
+              "name": "query",
+              "value": "={{ $json.body.chatInput || $json.body.prompt || $json.chatInput || $json.prompt }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract-query",
+      "name": "Extract Query",
+      "type": "n8n-nodes-base.set",
+      "position": [-600, 0],
+      "typeVersion": 3.3
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/embeddings",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"model\": \"llama3.2:latest\", \"prompt\": $json.query } }}",
+        "options": {}
+      },
+      "id": "generate-embedding",
+      "name": "Generate Embedding",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [-400, 0],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:6333/collections/successful_schemas/points/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"vector\": $json.embedding, \"limit\": 4, \"with_payload\": true } }}",
+        "options": {}
+      },
+      "id": "search-qdrant",
+      "name": "Search Qdrant",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [-200, 0],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "jsCode": "const qdrantResponse = $input.item.json;\nconst userQuery = $('Extract Query').item.json.query;\n\nlet enhancedSystemMessage = \"You are a specialized synthetic data generator assistant. Generate realistic test data based on user requests.\\n\\nRESPONSE FORMAT (JSON only):\\n{\\n  \\\"message\\\": \\\"Brief explanation\\\",\\n  \\\"schema\\\": [\\n    {\\\"name\\\": \\\"field_name\\\", \\\"type\\\": \\\"field_type\\\"},\\n    ...\\n  ],\\n  \\\"recordCount\\\": number\\n}\\n\\n\";\n\nlet retrievedSchemas = [];\nlet schemasFound = 0;\n\nconst qdrantResults = qdrantResponse.result || [];\n\nif (qdrantResults.length > 0) {\n  enhancedSystemMessage += \"\\n\\nRELEVANT SCHEMA TEMPLATES:\\n\";\n  \n  qdrantResults.forEach((result, index) => {\n    const payload = result.payload || {};\n    const score = result.score || 0;\n    const domain = payload.domain || 'Unknown';\n    const schemaStr = payload.schema || '';\n    \n    schemasFound++;\n    const similarity = (score * 100).toFixed(0);\n    \n    enhancedSystemMessage += `\\nTemplate ${index + 1} (${similarity}% match): ${domain}\\n`;\n    \n    try {\n      const parsedSchema = JSON.parse(schemaStr);\n      if (Array.isArray(parsedSchema)) {\n        retrievedSchemas.push(...parsedSchema);\n        enhancedSystemMessage += `Fields: ${parsedSchema.map(f => f.name).join(', ')}\\n`;\n      }\n    } catch (e) {\n      console.log('Schema parse error:', e.message);\n    }\n  });\n  \n  if (schemasFound > 0) {\n    enhancedSystemMessage += \"\\nUse these templates as reference.\\n\";\n  }\n}\n\nreturn [{\n  json: {\n    systemMessage: enhancedSystemMessage,\n    retrievedExamples: schemasFound,\n    retrievedSchemas: retrievedSchemas,\n    userQuery: userQuery\n  }\n}];"
+      },
+      "id": "build-context",
+      "name": "Build Context",
+      "type": "n8n-nodes-base.code",
+      "position": [0, 0],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"model\": \"llama3.2\",\n  \"prompt\": $json.userQuery,\n  \"system\": $json.systemMessage,\n  \"stream\": false,\n  \"options\": {\n    \"temperature\": 0.7,\n    \"num_predict\": 2000\n  }\n} }}",
+        "options": {}
+      },
+      "id": "generate-ai-response",
+      "name": "Generate AI Response",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [200, 0],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiOutput = $input.item.json.response || '';\nconst buildContext = $('Build Context').item.json;\n\nlet parsedResponse;\ntry {\n  let cleanedResponse = aiOutput.trim();\n  cleanedResponse = cleanedResponse.replace(/^```json\\s*/i, '').replace(/^```\\s*/, '').replace(/```\\s*$/, '');\n  \n  const jsonMatch = cleanedResponse.match(/\\{[\\s\\S]*\\}|\\[[\\s\\S]*\\]/);\n  \n  if (jsonMatch) {\n    parsedResponse = JSON.parse(jsonMatch[0]);\n    \n    if (!parsedResponse.schema || !Array.isArray(parsedResponse.schema)) {\n      throw new Error('Invalid schema format');\n    }\n    if (typeof parsedResponse.recordCount !== 'number') {\n      parsedResponse.recordCount = 100;\n    }\n  } else {\n    throw new Error('No JSON found in response');\n  }\n} catch (error) {\n  parsedResponse = {\n    message: \"I understood your request. Let me generate some sample data for you.\",\n    schema: [\n      {name: \"id\", type: \"uuid\"},\n      {name: \"name\", type: \"string\"},\n      {name: \"email\", type: \"email\"},\n      {name: \"created_at\", type: \"datetime\"}\n    ],\n    recordCount: 100\n  };\n}\n\n// Merge examples from retrieved schemas\nconst retrievedSchemas = buildContext.retrievedSchemas || [];\nif (retrievedSchemas.length > 0 && parsedResponse.schema) {\n  parsedResponse.schema = parsedResponse.schema.map(field => {\n    const matchingRetrieved = retrievedSchemas.find(rs => \n      rs.name && field.name && rs.name.toLowerCase() === field.name.toLowerCase()\n    );\n    \n    if (matchingRetrieved && matchingRetrieved.examples && matchingRetrieved.examples.length > 0) {\n      return {\n        ...field,\n        examples: matchingRetrieved.examples,\n        description: matchingRetrieved.description || field.description\n      };\n    }\n    return field;\n  });\n}\n\nreturn [{\n  json: {\n    parsedResponse: parsedResponse,\n    originalOutput: aiOutput,\n    ragEnhanced: buildContext.retrievedExamples > 0,\n    schemasUsed: buildContext.retrievedExamples,\n    retrievedSchemas: retrievedSchemas\n  }\n}];"
+      },
+      "id": "parse-response",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "position": [400, 0],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const parsedResponse = $input.item.json.parsedResponse;\nconst schema = parsedResponse.schema || [];\nconst recordCount = parsedResponse.recordCount || 100;\nconst message = parsedResponse.message || '';\nconst ragEnhanced = $input.item.json.ragEnhanced;\nconst schemasUsed = $input.item.json.schemasUsed;\nconst retrievedSchemas = $input.item.json.retrievedSchemas || [];\n\nconst generators = {\n  firstName: () => {\n    const names = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda'];\n    return names[Math.floor(Math.random() * names.length)];\n  },\n  lastName: () => {\n    const names = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis'];\n    return names[Math.floor(Math.random() * names.length)];\n  },\n  email: () => {\n    const first = generators.firstName().toLowerCase();\n    const last = generators.lastName().toLowerCase();\n    const domains = ['gmail.com', 'yahoo.com', 'hotmail.com'];\n    return `${first}.${last}@${domains[Math.floor(Math.random() * domains.length)]}`;\n  },\n  phone: () => {\n    const area = Math.floor(Math.random() * 900) + 100;\n    const prefix = Math.floor(Math.random() * 900) + 100;\n    const line = Math.floor(Math.random() * 9000) + 1000;\n    return `(${area}) ${prefix}-${line}`;\n  },\n  uuid: () => {\n    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n      const r = Math.random() * 16 | 0;\n      const v = c === 'x' ? r : (r & 0x3 | 0x8);\n      return v.toString(16);\n    });\n  },\n  datetime: () => new Date(Date.now() + Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),\n  date: () => new Date(Date.now() + Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],\n  integer: () => Math.floor(Math.random() * 10000),\n  decimal: () => (Math.random() * 10000).toFixed(2),\n  amount: () => (Math.random() * 10000).toFixed(2),\n  boolean: () => Math.random() > 0.5,\n  string: () => {\n    const words = ['active', 'pending', 'completed', 'cancelled', 'processing'];\n    return words[Math.floor(Math.random() * words.length)];\n  }\n};\n\nfunction generateIntelligentValue(fieldName, fieldType, retrievedSchemas) {\n  const nameLower = fieldName.toLowerCase();\n  \n  // Check for matching schema with examples\n  const matchingSchema = retrievedSchemas.find(schema => \n    schema.name && schema.name.toLowerCase().includes(nameLower.split('_')[0])\n  );\n  \n  if (matchingSchema && matchingSchema.examples && matchingSchema.examples.length > 0) {\n    return matchingSchema.examples[Math.floor(Math.random() * matchingSchema.examples.length)];\n  }\n  \n  // Flight-specific patterns\n  if (nameLower.includes('flight_number') || nameLower.includes('flight_no')) {\n    const airlines = ['AA', 'UA', 'DL', 'WN', 'B6'];\n    const airline = airlines[Math.floor(Math.random() * airlines.length)];\n    return `${airline}${Math.floor(Math.random() * 9999) + 1}`;\n  }\n  \n  if (nameLower.includes('airport')) {\n    const airports = ['LAX', 'JFK', 'ORD', 'DFW', 'ATL', 'SFO'];\n    return airports[Math.floor(Math.random() * airports.length)];\n  }\n  \n  if (nameLower.includes('airline')) {\n    const airlines = ['American Airlines', 'United Airlines', 'Delta Air Lines', 'Southwest Airlines', 'JetBlue'];\n    return airlines[Math.floor(Math.random() * airlines.length)];\n  }\n  \n  // Generic patterns\n  if (nameLower.includes('id')) return generators.uuid();\n  if (nameLower.includes('name')) return generators.firstName() + ' ' + generators.lastName();\n  if (nameLower.includes('email')) return generators.email();\n  if (nameLower.includes('phone')) return generators.phone();\n  if (nameLower.includes('amount') || nameLower.includes('price')) return generators.amount();\n  if (nameLower.includes('date') || nameLower.includes('time')) return generators.datetime();\n  \n  return generators[fieldType] ? generators[fieldType]() : generators.string();\n}\n\nlet data = [];\nfor (let i = 0; i < Math.min(recordCount, 1000); i++) {\n  const record = {};\n  schema.forEach(field => {\n    record[field.name] = generateIntelligentValue(field.name, field.type, retrievedSchemas);\n  });\n  data.push(record);\n}\n\nreturn [{\n  json: {\n    response: {\n      message: message,\n      data: data,\n      recordCount: data.length,\n      rag_enhanced: ragEnhanced,\n      schemas_used: schemasUsed\n    }\n  }\n}];"
+      },
+      "id": "generate-data",
+      "name": "Generate Data",
+      "type": "n8n-nodes-base.code",
+      "position": [600, 0],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.response }}",
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [800, 0],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{"node": "Extract Query", "type": "main", "index": 0}]]
+    },
+    "Extract Query": {
+      "main": [[{"node": "Generate Embedding", "type": "main", "index": 0}]]
+    },
+    "Generate Embedding": {
+      "main": [[{"node": "Search Qdrant", "type": "main", "index": 0}]]
+    },
+    "Search Qdrant": {
+      "main": [[{"node": "Build Context", "type": "main", "index": 0}]]
+    },
+    "Build Context": {
+      "main": [[{"node": "Generate AI Response", "type": "main", "index": 0}]]
+    },
+    "Generate AI Response": {
+      "main": [[{"node": "Parse Response", "type": "main", "index": 0}]]
+    },
+    "Parse Response": {
+      "main": [[{"node": "Generate Data", "type": "main", "index": 0}]]
+    },
+    "Generate Data": {
+      "main": [[{"node": "Webhook Response", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "528341b2e86c53477b94f918c416779dab805188fc81ebe05aeea5067b309de6"
+  }
+}

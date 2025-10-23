@@ -1,0 +1,75 @@
+{
+  "name": "Synthetic Data - Simple Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-simple",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger-simple",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [200, 300],
+      "webhookId": "generate-simple-webhook",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract input data\nconst schema = $input.item.json.body.schema || [];\nconst recordCount = $input.item.json.body.recordCount || 100;\nconst exportFormat = $input.item.json.body.exportFormat || 'csv';\n\n// Validate inputs\nif (!schema || schema.length === 0) {\n  return [{\n    json: {\n      success: false,\n      error: 'Schema is required and must contain at least one field'\n    }\n  }];\n}\n\nif (recordCount < 1 || recordCount > 10000) {\n  return [{\n    json: {\n      success: false,\n      error: 'Record count must be between 1 and 10,000'\n    }\n  }];\n}\n\n// Data generation functions using Faker-like logic\nconst generators = {\n  // Personal Data\n  firstName: () => {\n    const names = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth', 'David', 'Barbara', 'Richard', 'Susan', 'Joseph', 'Jessica', 'Thomas', 'Sarah', 'Charles', 'Karen'];\n    return names[Math.floor(Math.random() * names.length)];\n  },\n  lastName: () => {\n    const names = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin'];\n    return names[Math.floor(Math.random() * names.length)];\n  },\n  email: () => {\n    const first = generators.firstName().toLowerCase();\n    const last = generators.lastName().toLowerCase();\n    const domains = ['gmail.com', 'yahoo.com', 'outlook.com', 'example.com', 'email.com'];\n    return `${first}.${last}@${domains[Math.floor(Math.random() * domains.length)]}`;\n  },\n  phone: () => {\n    const area = Math.floor(Math.random() * 900) + 100;\n    const prefix = Math.floor(Math.random() * 900) + 100;\n    const line = Math.floor(Math.random() * 9000) + 1000;\n    return `(${area}) ${prefix}-${line}`;\n  },\n  address: () => {\n    const num = Math.floor(Math.random() * 9999) + 1;\n    const streets = ['Main St', 'Oak Ave', 'Maple Dr', 'Cedar Ln', 'Pine Rd', 'Elm St', 'Washington Blvd', 'Park Ave'];\n    return `${num} ${streets[Math.floor(Math.random() * streets.length)]}`;\n  },\n  \n  // Business Data\n  company: () => {\n    const prefixes = ['Tech', 'Global', 'Digital', 'Smart', 'Innovative', 'Advanced'];\n    const suffixes = ['Solutions', 'Systems', 'Corp', 'Industries', 'Group', 'Enterprises'];\n    return `${prefixes[Math.floor(Math.random() * prefixes.length)]} ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;\n  },\n  jobTitle: () => {\n    const titles = ['Software Engineer', 'Product Manager', 'Data Analyst', 'Sales Manager', 'Marketing Director', 'Account Executive', 'Business Analyst', 'Project Manager', 'Developer', 'Designer'];\n    return titles[Math.floor(Math.random() * titles.length)];\n  },\n  department: () => {\n    const depts = ['Engineering', 'Sales', 'Marketing', 'Finance', 'Human Resources', 'Operations', 'Customer Service', 'IT', 'Legal', 'R&D'];\n    return depts[Math.floor(Math.random() * depts.length)];\n  },\n  \n  // Financial Data\n  creditCard: () => {\n    const parts = [];\n    for (let i = 0; i < 4; i++) {\n      parts.push(Math.floor(Math.random() * 9000) + 1000);\n    }\n    return parts.join('-');\n  },\n  currency: () => {\n    const currencies = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY'];\n    return currencies[Math.floor(Math.random() * currencies.length)];\n  },\n  amount: () => {\n    return (Math.random() * 10000).toFixed(2);\n  },\n  iban: () => {\n    const country = ['GB', 'DE', 'FR', 'IT', 'ES'][Math.floor(Math.random() * 5)];\n    const check = Math.floor(Math.random() * 90) + 10;\n    const bank = Math.floor(Math.random() * 9000) + 1000;\n    const account = Math.floor(Math.random() * 90000000) + 10000000;\n    return `${country}${check}${bank}${account}`;\n  },\n  \n  // Technical Data\n  uuid: () => {\n    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n      const r = Math.random() * 16 | 0;\n      const v = c === 'x' ? r : (r & 0x3 | 0x8);\n      return v.toString(16);\n    });\n  },\n  ipAddress: () => {\n    return `${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}`;\n  },\n  url: () => {\n    const domains = ['example.com', 'website.org', 'demo.net', 'test.io', 'sample.dev'];\n    return `https://www.${domains[Math.floor(Math.random() * domains.length)]}`;\n  },\n  username: () => {\n    const first = generators.firstName().toLowerCase();\n    const num = Math.floor(Math.random() * 9999);\n    return `${first}${num}`;\n  },\n  \n  // Date & Time\n  date: () => {\n    const start = new Date(2020, 0, 1);\n    const end = new Date();\n    const date = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));\n    return date.toISOString().split('T')[0];\n  },\n  datetime: () => {\n    const start = new Date(2020, 0, 1);\n    const end = new Date();\n    const date = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));\n    return date.toISOString();\n  },\n  birthdate: () => {\n    const year = 1950 + Math.floor(Math.random() * 50);\n    const month = Math.floor(Math.random() * 12) + 1;\n    const day = Math.floor(Math.random() * 28) + 1;\n    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;\n  },\n  \n  // Numbers\n  integer: () => Math.floor(Math.random() * 10000),\n  decimal: () => (Math.random() * 1000).toFixed(2),\n  percentage: () => (Math.random() * 100).toFixed(1)\n};\n\n// Generate data\nconst data = [];\nfor (let i = 0; i < recordCount; i++) {\n  const record = {};\n  \n  schema.forEach(field => {\n    // Check blank percentage\n    const blankPercentage = field.blankPercentage || 0;\n    const shouldBeBlank = Math.random() * 100 < blankPercentage;\n    \n    if (shouldBeBlank) {\n      record[field.name] = null; // or empty string ''\n    } else {\n      const generator = generators[field.type];\n      if (generator) {\n        record[field.name] = generator();\n      } else {\n        record[field.name] = `${field.type}_value`;\n      }\n    }\n  });\n  \n  data.push(record);\n}\n\n// Return result\nreturn [{\n  json: {\n    success: true,\n    data: data,\n    recordCount: data.length,\n    exportFormat: exportFormat\n  }\n}];"
+      },
+      "id": "data-generator",
+      "name": "Data Generator",
+      "type": "n8n-nodes-base.function",
+      "position": [400, 300],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [600, 300],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Data Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Generator": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-06T00:00:00.000Z",
+  "versionId": "1"
+}
+

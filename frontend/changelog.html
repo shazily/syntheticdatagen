@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Changelog - Synthetic Data Generator</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .changelog-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .changelog-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .changelog-header h1 {
+            font-size: 2.5rem;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+        
+        .changelog-header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-primary);
+            text-decoration: none;
+            font-weight: 500;
+            margin-bottom: 32px;
+            transition: color 0.2s ease;
+        }
+        
+        .back-link:hover {
+            color: var(--accent-hover);
+        }
+        
+        .version-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+        }
+        
+        .version-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .version-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+        
+        .version-date {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        .version-type {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .type-major {
+            background: #10B981;
+            color: white;
+        }
+        
+        .type-minor {
+            background: #3B82F6;
+            color: white;
+        }
+        
+        .type-patch {
+            background: #6B7280;
+            color: white;
+        }
+        
+        .features-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .features-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .features-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .feature-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        
+        .feature-new {
+            background: #10B981;
+            color: white;
+        }
+        
+        .feature-improved {
+            background: #3B82F6;
+            color: white;
+        }
+        
+        .feature-fixed {
+            background: #F59E0B;
+            color: white;
+        }
+        
+        .feature-content {
+            flex: 1;
+        }
+        
+        .feature-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        
+        .feature-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .roadmap {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 40px;
+        }
+        
+        .roadmap h3 {
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+        
+        .roadmap-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .roadmap-list li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+            color: var(--text-secondary);
+        }
+        
+        .roadmap-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="changelog-container">
+        <a href="/" class="back-link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back to Synthetic Data Generator
+        </a>
+        
+        <div class="changelog-header">
+            <h1>Changelog</h1>
+            <p>Track all the features, improvements, and fixes in Synthetic Data Generator</p>
+        </div>
+        
+        <!-- Version 2.2.0 -->
+        <div class="version-card">
+            <div class="version-header">
+                <div>
+                    <div class="version-number">v2.2.0</div>
+                    <div class="version-date">October 23, 2025</div>
+                </div>
+                <span class="version-type type-minor">Minor Release</span>
+            </div>
+            <ul class="features-list">
+                <li>
+                    <div class="feature-icon feature-new">✨</div>
+                    <div class="feature-content">
+                        <div class="feature-title">AI Mode RAW & SQL Tabs</div>
+                        <div class="feature-description">Added RAW and SQL preview tabs to AI Mode, matching Schema Builder functionality. Each tab includes refresh buttons to update data when schema changes.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-new">✨</div>
+                    <div class="feature-content">
+                        <div class="feature-title">SQL Export Generation</div>
+                        <div class="feature-description">Complete SQL statement generation with CREATE TABLE and INSERT statements. Includes copy-to-clipboard functionality and proper SQL escaping.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-new">✨</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Improved Modal Workflow</div>
+                        <div class="feature-description">Streamlined preview modals to pre-generate data automatically. Removed unnecessary "Generate Preview" buttons and improved user experience.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-new">✨</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Enhanced Modal Dimensions</div>
+                        <div class="feature-description">Increased modal width to 1200px and height to 80vh for better SQL content display. Improved readability and user experience.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-new">✨</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Consistent Tab Icons</div>
+                        <div class="feature-description">Added professional icons to all preview tabs (TABLE, RAW, SQL) across both AI Mode and Schema Builder for visual consistency.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-fixed">🔧</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Fixed SQL Tab Schema State</div>
+                        <div class="feature-description">Resolved issue where SQL tab showed "No schema available" by fixing schema state reference in updateSQLView function.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-improved">⚡</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Better Database Icon</div>
+                        <div class="feature-description">Updated SQL tab icon to a more recognizable database cylinder icon, improving visual clarity for database operations.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-new">✨</div>
+                    <div class="feature-content">
+                        <div class="feature-title">JSON & XML Export Formats</div>
+                        <div class="feature-description">Added JSON and XML export options to both AI Mode and Schema Builder. JSON includes pretty formatting, XML includes proper escaping and structure.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-improved">⚡</div>
+                    <div class="feature-content">
+                        <div class="feature-title">AI Mode Speed Optimization</div>
+                        <div class="feature-description">AI Mode "Generate Full Data" now uses fast simple generator instead of AI processing. Significantly faster while preserving all user schema modifications.</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- Version 2.1.0 -->
+        <div class="version-card">
+            <div class="version-header">
+                <div>
+                    <div class="version-number">v2.1.0</div>
+                    <div class="version-date">October 22, 2025</div>
+                </div>
+                <span class="version-type type-patch">Patch Release</span>
+            </div>
+            <ul class="features-list">
+                <li>
+                    <div class="feature-icon feature-fixed">🔧</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Fixed Tab Active States</div>
+                        <div class="feature-description">Preview modal tabs now correctly show green underscore on active tab. Fixed mismatch between visual state and displayed content.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-fixed">🔧</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Improved Modal Behavior</div>
+                        <div class="feature-description">Preview modal now defaults to TABLE view with correct button states. Fixed modal closing issues after generating preview.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-fixed">🔧</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Schema Builder Drag & Drop</div>
+                        <div class="feature-description">Fixed drag and drop functionality breaking after closing preview modal. Added proper event listener re-initialization.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-fixed">🔧</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Download Button States</div>
+                        <div class="feature-description">Fixed download button disabled states and added pulsating animation when data is ready for download.</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- Version 2.0.0 -->
+        <div class="version-card">
+            <div class="version-header">
+                <div>
+                    <div class="version-number">v2.0.0</div>
+                    <div class="version-date">October 15, 2025</div>
+                </div>
+                <span class="version-type type-major">Major Release</span>
+            </div>
+            <ul class="features-list">
+                <li>
+                    <div class="feature-icon feature-new">✨</div>
+                    <div class="feature-content">
+                        <div class="feature-title">AI-Powered Data Generation</div>
+                        <div class="feature-description">Introduced intelligent schema generation using natural language prompts. AI can understand context and generate relevant data structures.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-new">✨</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Enhanced Schema Builder</div>
+                        <div class="feature-description">Completely redesigned drag-and-drop interface with improved field categories, better organization, and intuitive user experience.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-new">✨</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Custom Field Types</div>
+                        <div class="feature-description">Users can now define their own custom field types beyond the predefined options, providing unlimited flexibility.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-new">✨</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Data Export Options</div>
+                        <div class="feature-description">Added CSV and Excel (XLSX) export formats with proper formatting and data structure preservation.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-improved">⚡</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Performance Improvements</div>
+                        <div class="feature-description">Optimized data generation algorithms for faster processing of large datasets up to 10,000 records.</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- Version 1.5.0 -->
+        <div class="version-card">
+            <div class="version-header">
+                <div>
+                    <div class="version-number">v1.5.0</div>
+                    <div class="version-date">October 17, 2025</div>
+                </div>
+                <span class="version-type type-minor">Minor Release</span>
+            </div>
+            <ul class="features-list">
+                <li>
+                    <div class="feature-icon feature-new">✨</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Preview Modal</div>
+                        <div class="feature-description">Added preview functionality to test data generation before creating full datasets. Includes both table and raw data views.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-improved">⚡</div>
+                    <div class="feature-content">
+                        <div class="feature-title">UI/UX Improvements</div>
+                        <div class="feature-description">Enhanced user interface with better visual feedback, improved button states, and more intuitive navigation.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-fixed">🔧</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Bug Fixes</div>
+                        <div class="feature-description">Fixed various UI issues including modal positioning, button states, and responsive design problems.</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- Version 1.0.0 -->
+        <div class="version-card">
+            <div class="version-header">
+                <div>
+                    <div class="version-number">v1.0.0</div>
+                    <div class="version-date">October 15, 2025</div>
+                </div>
+                <span class="version-type type-major">Initial Release</span>
+            </div>
+            <ul class="features-list">
+                <li>
+                    <div class="feature-icon feature-new">✨</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Core Data Generation</div>
+                        <div class="feature-description">Basic synthetic data generation with predefined field types including personal, business, financial, and technical data.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-new">✨</div>
+                    <div class="feature-content">
+                        <div class="feature-title">Schema Builder</div>
+                        <div class="feature-description">Drag-and-drop interface for building custom data schemas with various field types and options.</div>
+                    </div>
+                </li>
+                <li>
+                    <div class="feature-icon feature-new">✨</div>
+                    <div class="feature-content">
+                        <div class="feature-title">CSV Export</div>
+                        <div class="feature-description">Export generated data in CSV format for easy import into other applications and databases.</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- Roadmap -->
+        <div class="roadmap">
+            <h3>🚀 Upcoming Features</h3>
+            <ul class="roadmap-list">
+                <li>
+                    <div class="roadmap-icon">📊</div>
+                    <span>Additional export formats (JSON, XML, SQL INSERT statements)</span>
+                </li>
+                <li>
+                    <div class="roadmap-icon">🔗</div>
+                    <span>Data relationships and foreign key constraints</span>
+                </li>
+                <li>
+                    <div class="roadmap-icon">📋</div>
+                    <span>Data templates and presets for common use cases</span>
+                </li>
+                <li>
+                    <div class="roadmap-icon">🔒</div>
+                    <span>Data anonymization and privacy features</span>
+                </li>
+                <li>
+                    <div class="roadmap-icon">📈</div>
+                    <span>Data visualization and analytics dashboard</span>
+                </li>
+                <li>
+                    <div class="roadmap-icon">🔌</div>
+                    <span>API endpoints for programmatic access</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

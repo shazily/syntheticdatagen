@@ -1,0 +1,140 @@
+{
+  "name": "Cleanup Duplicates",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cleanup-duplicates",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [50, 300],
+      "webhookId": "cleanup-duplicates-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:6333/collections/successful_schemas/points/scroll",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  limit: 1000,\n  with_payload: true\n} }}",
+        "options": {}
+      },
+      "id": "get-all-points",
+      "name": "Get All Points",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Find and identify duplicate domains\nconst data = $input.item.json;\nconst points = data.result.points;\n\n// Group points by domain name\nconst domainGroups = {};\npoints.forEach(point => {\n  const domain = point.payload.user_prompt;\n  if (!domainGroups[domain]) {\n    domainGroups[domain] = [];\n  }\n  domainGroups[domain].push(point);\n});\n\n// Find duplicates (domains with more than 1 entry)\nconst duplicates = {};\nconst toDelete = [];\nconst toKeep = [];\n\nObject.keys(domainGroups).forEach(domain => {\n  const group = domainGroups[domain];\n  if (group.length > 1) {\n    duplicates[domain] = group.length;\n    \n    // Sort by timestamp (newest first) and keep the most recent\n    group.sort((a, b) => new Date(b.payload.timestamp) - new Date(a.payload.timestamp));\n    \n    // Keep the first (newest) one\n    toKeep.push(group[0]);\n    \n    // Mark the rest for deletion\n    for (let i = 1; i < group.length; i++) {\n      toDelete.push(group[i].id);\n    }\n  } else {\n    // Single entry, keep it\n    toKeep.push(group[0]);\n  }\n});\n\nreturn [{\n  json: {\n    totalPoints: points.length,\n    uniqueDomains: Object.keys(domainGroups).length,\n    duplicateDomains: Object.keys(duplicates),\n    duplicateCounts: duplicates,\n    toDelete: toDelete,\n    toKeep: toKeep,\n    deleteCount: toDelete.length,\n    keepCount: toKeep.length\n  }\n}];"
+      },
+      "id": "find-duplicates",
+      "name": "Find Duplicates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:6333/collections/successful_schemas/points/delete",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  points: $json.toDelete\n} }}",
+        "options": {}
+      },
+      "id": "delete-duplicates",
+      "name": "Delete Duplicates",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const processedData = $('Find Duplicates').item.json;\nconst deleteResult = $input.item.json;\n\nreturn [{\n  json: {\n    success: true,\n    message: 'Cleanup completed successfully',\n    totalPoints: processedData.totalPoints,\n    uniqueDomains: processedData.uniqueDomains,\n    duplicateDomains: processedData.duplicateDomains,\n    duplicateCounts: processedData.duplicateCounts,\n    deletedCount: processedData.deleteCount,\n    keptCount: processedData.keepCount,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "summary",
+      "name": "Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $('Summary').item.json }}",
+        "options": {}
+      },
+      "id": "respond-to-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get All Points",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Points": {
+      "main": [
+        [
+          {
+            "node": "Find Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Delete Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1"
+}

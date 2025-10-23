@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # V1 - Original (Port 3004)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: synthetic-data-web
+    ports:
+      - "3004:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+    networks:
+      - synthetic-data-net
+
+  # V2 - PRODUCTION STABLE (Port 3005) - Updated to new version
+  web-v2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: synthetic-data-web-v2-production
+    ports:
+      - "3005:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+    networks:
+      - synthetic-data-net
+
+  # V3 - DEVELOPMENT (Port 3006) - Active Development
+  web-v3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: synthetic-data-web-v3-dev
+    ports:
+      - "3006:80"
+    volumes:
+      - ./frontend-v3:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+    networks:
+      - synthetic-data-net
+
+  # Qdrant Vector Database - For RAG and semantic search
+  qdrant:
+    image: qdrant/qdrant:v1.7.4
+    container_name: synthetic-data-qdrant
+    ports:
+      - "6333:6333"  # REST API
+      - "6334:6334"  # gRPC API
+    volumes:
+      - ./qdrant_storage:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__LOG_LEVEL: INFO
+    restart: unless-stopped
+    networks:
+      - synthetic-data-net
+
+networks:
+  synthetic-data-net:
+    driver: bridge

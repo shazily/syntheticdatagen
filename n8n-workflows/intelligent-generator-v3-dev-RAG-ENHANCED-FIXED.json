@@ -1,0 +1,318 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-intelligent-v3",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "7d1cce43-1e57-4d72-a016-5942ae4353d1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        -800,
+        -48
+      ],
+      "webhookId": "generate-intelligent-v3-webhook",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/embeddings",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "all-minilm"
+            },
+            {
+              "name": "prompt",
+              "value": "={{ $json.body.chatInput }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "generate-query-embedding",
+      "name": "Generate Query Embedding",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -600,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:6333/collections/successful_schemas/points/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"vector\": {{ JSON.stringify($json.embedding) }},\n  \"limit\": 3,\n  \"with_payload\": true,\n  \"score_threshold\": 0.4\n}",
+        "options": {}
+      },
+      "id": "search-qdrant",
+      "name": "Search Qdrant for Similar Schemas",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -400,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build enhanced system message with retrieved examples\nconst searchResults = $input.item.json.result || [];\nconst webhookData = $('Webhook Trigger').item.json;\n\n// Check if a schema is provided in the request (for Generate Full Data)\nif (webhookData.body && webhookData.body.schema && Array.isArray(webhookData.body.schema) && webhookData.body.schema.length > 0) {\n  // Schema is provided - use it directly instead of generating new one\n  return [{\n    json: {\n      systemMessage: \"Use the provided schema to generate data. Do not modify the schema.\",\n      providedSchema: webhookData.body.schema,\n      recordCount: webhookData.body.recordCount || 100,\n      isSchemaProvided: true,\n      webhookData: webhookData.body\n    }\n  }];\n}\n\nlet enhancedSystemMessage = \"You are a specialized synthetic data generator assistant. Your ONLY purpose is to help users generate test/dummy/sample data for various use cases.\\n\\nYOUR ROLE:\\n- Generate synthetic data for ANY use case requested by users\\n- Accept all requests related to data generation, datasets, records, or samples\\n- ONLY decline if asked completely unrelated questions like \\\"What's 2+2?\\\" or \\\"Tell me about history\\\"\\n- If user mentions \\\"data\\\", \\\"create\\\", \\\"generate\\\", \\\"dataset\\\", \\\"records\\\" - IT'S A VALID REQUEST, process it!\\n\\nHANDLING USER REQUESTS:\\n- Users speak naturally and conversationally - this is NORMAL, extract what they need\\n- Complex requirements with details (\\\"20% this, 80% that\\\", \\\"currency INR\\\") - PAY ATTENTION to these specifications\\n- Follow-up questions (\\\"have you created it?\\\", \\\"now make 100 records\\\") - USE CHAT HISTORY\\n- Requests may be long and detailed - READ CAREFULLY and extract all requirements\\n\\nYOUR PROCESS:\\n1. UNDERSTAND: Read the full request carefully, including conversational parts\\n2. EXTRACT: Identify dataset type, required fields, special rules (like percentages, distributions)\\n3. THINK: What domain? What fields make sense? Any constraints mentioned?\\n4. DESIGN: Create schema with appropriate field names and types\\n5. RESPOND: Always provide the JSON schema format\\n\\nIMPORTANT RULES:\\n- MAXIMUM 1,000 records per request (hard limit)\\n- If user requests more than 1000, cap at 1000 and inform them\\n- Default to 100 records if not specified\\n- Extract record count from phrases like \\\"with 100 records\\\", \\\"hundred records\\\", \\\"9 records\\\"\\n- Be creative with field types - you're not limited to a predefined list\\n- STAY ON TOPIC: Only synthetic data generation, nothing else\\n\\nFIELD TYPES - You have flexibility:\\n- Use common types when available: firstName, lastName, email, phone, address, company, jobTitle, creditCard, currency, amount, uuid, datetime, date, integer, decimal, percentage\\n- For financial: transactionId, transactionAmount, paymentStatus, merchantName, cardholderName, loyaltyPoints, accountNumber, invoiceNumber, taxId\\n- Create ANY descriptive type that makes sense: flightNumber, seatNumber, warehouseLocation, productSKU, orderStatus, trackingNumber, etc.\\n- The system will intelligently generate realistic data based on field names and types\\n\\nRESPONSE FORMAT (JSON only):\\n{\\n  \\\"message\\\": \\\"Brief explanation of what you're generating\\\",\\n  \\\"schema\\\": [\\n    {\\\"name\\\": \\\"descriptive_field_name\\\", \\\"type\\\": \\\"appropriate_type\\\"},\\n    ...\\n  ],\\n  \\\"recordCount\\\": number (max 1000)\\n}\\n\\n\";\n\n// Add retrieved examples if found\nif (searchResults.length > 0) {\n  enhancedSystemMessage += \"\\n\\nRELEVANT EXAMPLES FROM SUCCESSFUL SCHEMAS:\\n\";\n  enhancedSystemMessage += \"Here are similar schemas that were highly rated by users (use as inspiration):\\n\\n\";\n  \n  searchResults.forEach((result, index) => {\n    const payload = result.payload;\n    const similarity = (result.score * 100).toFixed(0);\n    \n    enhancedSystemMessage += `Example ${index + 1} (${similarity}% similar to current request):\\n`;\n    enhancedSystemMessage += `User asked for: \\\"${payload.user_prompt}\\\"\\n`;\n    enhancedSystemMessage += `Schema used:\\n${JSON.stringify(payload.schema, null, 2)}\\n\\n`;\n  });\n  \n  enhancedSystemMessage += \"Use these examples as reference, but adapt to the current user's specific needs.\\n\\n\";\n}\n\n// Add standard examples\nenhancedSystemMessage += `EXAMPLES:\\n\\nUser: \\\"credit card transactions\\\"\\nThink: Credit card transactions need transaction IDs, cardholder info, merchant details, amounts, status, timestamps\\n{\\n  \\\"message\\\": \\\"Generating credit card transaction records with merchant, amount, and status details.\\\",\\n  \\\"schema\\\": [\\n    {\\\"name\\\": \\\"transaction_id\\\", \\\"type\\\": \\\"transactionId\\\"},\\n    {\\\"name\\\": \\\"cardholder_name\\\", \\\"type\\\": \\\"cardholderName\\\"},\\n    {\\\"name\\\": \\\"card_last_four\\\", \\\"type\\\": \\\"creditCard\\\"},\\n    {\\\"name\\\": \\\"merchant\\\", \\\"type\\\": \\\"merchantName\\\"},\\n    {\\\"name\\\": \\\"amount\\\", \\\"type\\\": \\\"transactionAmount\\\"},\\n    {\\\"name\\\": \\\"currency\\\", \\\"type\\\": \\\"currency\\\"},\\n    {\\\"name\\\": \\\"status\\\", \\\"type\\\": \\\"paymentStatus\\\"},\\n    {\\\"name\\\": \\\"transaction_date\\\", \\\"type\\\": \\\"datetime\\\"}\\n  ],\\n  \\\"recordCount\\\": 100\\n}\\n\\nUser: \\\"loyalty program data\\\"\\nThink: Loyalty programs track members, points, tiers, transactions, redemptions\\n{\\n  \\\"message\\\": \\\"Creating loyalty program member records with points, tiers, and activity.\\\",\\n  \\\"schema\\\": [\\n    {\\\"name\\\": \\\"member_id\\\", \\\"type\\\": \\\"uuid\\\"},\\n    {\\\"name\\\": \\\"member_name\\\", \\\"type\\\": \\\"fullName\\\"},\\n    {\\\"name\\\": \\\"email\\\", \\\"type\\\": \\\"email\\\"},\\n    {\\\"name\\\": \\\"points_balance\\\", \\\"type\\\": \\\"loyaltyPoints\\\"},\\n    {\\\"name\\\": \\\"tier\\\", \\\"type\\\": \\\"membershipTier\\\"},\\n    {\\\"name\\\": \\\"points_earned_ytd\\\", \\\"type\\\": \\\"pointsEarned\\\"},\\n    {\\\"name\\\": \\\"last_activity\\\", \\\"type\\\": \\\"datetime\\\"}\\n  ],\\n  \\\"recordCount\\\": 100\\n}\\n\\nBe intelligent, creative, and contextually aware. Use chat history for follow-ups. Design schemas that truly fit what users need!`;\n\nreturn [{\n  json: {\n    systemMessage: enhancedSystemMessage,\n    retrievedExamples: searchResults.length,\n    webhookData: webhookData.body\n  }\n}];"
+      },
+      "id": "build-enhanced-prompt",
+      "name": "Build Enhanced System Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook Trigger').item.json.body.sessionId }}",
+        "contextWindowLength": 10
+      },
+      "id": "6016ecf8-0259-421c-8d6d-102cc08529b5",
+      "name": "Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        -200,
+        144
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Webhook Trigger').item.json.body.chatInput }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "={{ $('Build Enhanced System Message').item.json.systemMessage }}"
+        }
+      },
+      "id": "b7ec2c0d-6dbc-491f-ac1c-38aadc1eae8d",
+      "name": "AI Agent (RAG-Enhanced)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        0,
+        -48
+      ],
+      "typeVersion": 1.8
+    },
+    {
+      "parameters": {
+        "model": "llama3.2:latest",
+        "options": {
+          "temperature": 0.7,
+          "keepAlive": "1h",
+          "numCtx": 2048
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        240
+      ],
+      "id": "d6ed87ea-c192-48f8-88ff-d56f664c8c27",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "jmFnQptmLMNT8nwD",
+          "name": "Ollama account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse AI response - extract first valid JSON object only\nconst aiOutput = $input.item.json.output || '';\n\nlet parsedResponse;\ntry {\n  // Find the first JSON object by counting braces\n  let braceCount = 0;\n  let startIndex = -1;\n  let endIndex = -1;\n  \n  for (let i = 0; i < aiOutput.length; i++) {\n    if (aiOutput[i] === '{') {\n      if (braceCount === 0) startIndex = i;\n      braceCount++;\n    } else if (aiOutput[i] === '}') {\n      braceCount--;\n      if (braceCount === 0 && startIndex !== -1) {\n        endIndex = i;\n        break;\n      }\n    }\n  }\n  \n  if (startIndex !== -1 && endIndex !== -1) {\n    const jsonStr = aiOutput.substring(startIndex, endIndex + 1);\n    parsedResponse = JSON.parse(jsonStr);\n    \n    // Validate required fields\n    if (!parsedResponse.schema || !Array.isArray(parsedResponse.schema)) {\n      throw new Error('Invalid schema format');\n    }\n    if (typeof parsedResponse.recordCount !== 'number') {\n      parsedResponse.recordCount = 100;\n    }\n  } else {\n    throw new Error('No JSON found in response');\n  }\n} catch (error) {\n  // Fallback response\n  parsedResponse = {\n    message: \"I understood your request. Let me generate some sample data for you.\",\n    schema: [\n      {name: \"id\", type: \"uuid\"},\n      {name: \"name\", type: \"firstName\"},\n      {name: \"email\", type: \"email\"},\n      {name: \"created_at\", type: \"datetime\"}\n    ],\n    recordCount: 100\n  };\n}\n\nreturn [{\n  json: {\n    parsedResponse: parsedResponse,\n    originalOutput: aiOutput\n  }\n}];"
+      },
+      "id": "ef1a485e-5195-4894-be08-e86e631ee740",
+      "name": "Response Parser",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        200,
+        -48
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "functionCode": "// Check if schema is provided directly (for Generate Full Data)\nconst buildMessage = $('Build Enhanced System Message').item.json;\n\nlet schema, recordCount, message;\n\nif (buildMessage.isSchemaProvided && buildMessage.providedSchema) {\n  // Schema is provided directly - use it\n  schema = buildMessage.providedSchema;\n  recordCount = buildMessage.recordCount || 100;\n  message = 'Generating data using provided schema';\n  console.log('Using provided schema:', schema);\n} else {\n  // Parse schema from AI response\n  const parsedResponse = $input.item.json.parsedResponse;\n  schema = parsedResponse.schema || [];\n  recordCount = parsedResponse.recordCount || 100;\n  message = parsedResponse.message || '';\n}\n\n// Data generation functions (same as simple generator)\nconst generators = {\n  firstName: () => {\n    const names = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Elizabeth', 'David', 'Barbara', 'Richard', 'Susan', 'Joseph', 'Jessica', 'Thomas', 'Sarah', 'Charles', 'Karen'];\n    return names[Math.floor(Math.random() * names.length)];\n  },\n  lastName: () => {\n    const names = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin'];\n    return names[Math.floor(Math.random() * names.length)];\n  },\n  email: () => {\n    const first = generators.firstName().toLowerCase();\n    const last = generators.lastName().toLowerCase();\n    const domains = ['gmail.com', 'yahoo.com', 'outlook.com', 'example.com'];\n    return `${first}.${last}@${domains[Math.floor(Math.random() * domains.length)]}`;\n  },\n  phone: () => {\n    const area = Math.floor(Math.random() * 900) + 100;\n    const prefix = Math.floor(Math.random() * 900) + 100;\n    const line = Math.floor(Math.random() * 9000) + 1000;\n    return `(${area}) ${prefix}-${line}`;\n  },\n  address: () => {\n    const num = Math.floor(Math.random() * 9999) + 1;\n    const streets = ['Main St', 'Oak Ave', 'Maple Dr', 'Cedar Ln', 'Pine Rd'];\n    return `${num} ${streets[Math.floor(Math.random() * streets.length)]}`;\n  },\n  company: () => {\n    const prefixes = ['Tech', 'Global', 'Digital', 'Smart'];\n    const suffixes = ['Solutions', 'Systems', 'Corp', 'Industries'];\n    return `${prefixes[Math.floor(Math.random() * prefixes.length)]} ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;\n  },\n  jobTitle: () => {\n    const titles = ['Software Engineer', 'Product Manager', 'Data Analyst', 'Sales Manager', 'Marketing Director'];\n    return titles[Math.floor(Math.random() * titles.length)];\n  },\n  department: () => {\n    const depts = ['Engineering', 'Sales', 'Marketing', 'Finance', 'HR'];\n    return depts[Math.floor(Math.random() * depts.length)];\n  },\n  creditCard: () => {\n    const parts = [];\n    for (let i = 0; i < 4; i++) {\n      parts.push(Math.floor(Math.random() * 9000) + 1000);\n    }\n    return parts.join('-');\n  },\n  currency: () => {\n    const currencies = ['USD', 'EUR', 'GBP', 'JPY', 'CAD'];\n    return currencies[Math.floor(Math.random() * currencies.length)];\n  },\n  amount: () => (Math.random() * 10000).toFixed(2),\n  iban: () => {\n    const country = ['GB', 'DE', 'FR'][Math.floor(Math.random() * 3)];\n    const check = Math.floor(Math.random() * 90) + 10;\n    const bank = Math.floor(Math.random() * 9000) + 1000;\n    const account = Math.floor(Math.random() * 90000000) + 10000000;\n    return `${country}${check}${bank}${account}`;\n  },\n  uuid: () => {\n    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n      const r = Math.random() * 16 | 0;\n      const v = c === 'x' ? r : (r & 0x3 | 0x8);\n      return v.toString(16);\n    });\n  },\n  ipAddress: () => {\n    return `${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}`;\n  },\n  url: () => {\n    const domains = ['example.com', 'website.org', 'demo.net'];\n    return `https://www.${domains[Math.floor(Math.random() * domains.length)]}`;\n  },\n  username: () => {\n    const first = generators.firstName().toLowerCase();\n    const num = Math.floor(Math.random() * 9999);\n    return `${first}${num}`;\n  },\n  date: () => {\n    const start = new Date(2020, 0, 1);\n    const end = new Date();\n    const date = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));\n    return date.toISOString().split('T')[0];\n  },\n  datetime: () => {\n    const start = new Date(2020, 0, 1);\n    const end = new Date();\n    const date = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));\n    return date.toISOString();\n  },\n  birthdate: () => {\n    const year = 1950 + Math.floor(Math.random() * 50);\n    const month = Math.floor(Math.random() * 12) + 1;\n    const day = Math.floor(Math.random() * 28) + 1;\n    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;\n  },\n  integer: () => Math.floor(Math.random() * 10000),\n  decimal: () => (Math.random() * 1000).toFixed(2),\n  percentage: () => (Math.random() * 100).toFixed(1),\n  // Financial/Transaction generators\n  accountNumber: () => {\n    const prefix = Math.floor(Math.random() * 900) + 100;\n    const middle = Math.floor(Math.random() * 900000) + 100000;\n    const suffix = Math.floor(Math.random() * 90) + 10;\n    return `${prefix}-${middle}-${suffix}`;\n  },\n  invoiceNumber: () => {\n    const prefix = ['INV', 'BILL', 'RCP'][Math.floor(Math.random() * 3)];\n    const num = Math.floor(Math.random() * 90000) + 10000;\n    return `${prefix}-${num}`;\n  },\n  taxId: () => {\n    const parts = [];\n    for (let i = 0; i < 3; i++) {\n      parts.push(Math.floor(Math.random() * 90) + 10);\n    }\n    return parts.join('-');\n  },\n  transactionId: () => {\n    return 'TXN-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9).toUpperCase();\n  },\n  transactionAmount: () => (Math.random() * 5000).toFixed(2),\n  paymentStatus: () => {\n    const statuses = ['Completed', 'Pending', 'Failed', 'Refunded', 'Processing'];\n    return statuses[Math.floor(Math.random() * statuses.length)];\n  },\n  merchantName: () => {\n    const merchants = ['Amazon', 'Walmart', 'Target', 'Best Buy', 'Starbucks', 'McDonald\\'s', 'Shell Gas', 'Whole Foods', 'CVS Pharmacy', 'Home Depot', 'Apple Store', 'Nike', 'Costco', 'Walgreens', 'Kroger'];\n    return merchants[Math.floor(Math.random() * merchants.length)];\n  },\n  cardholderName: () => {\n    return generators.firstName() + ' ' + generators.lastName();\n  },\n  loyaltyPoints: () => Math.floor(Math.random() * 50000)\n};\n\n// Helper: Generate weighted random choice (e.g., 20% cash, 80% retail)\nfunction weightedChoice(options) {\n  // options = [{value: 'Cash', weight: 20}, {value: 'Retail', weight: 80}]\n  const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);\n  let random = Math.random() * totalWeight;\n  \n  for (const option of options) {\n    if (random < option.weight) {\n      return option.value;\n    }\n    random -= option.weight;\n  }\n  return options[0].value;\n}\n\n// Intelligent fallback generator for unknown types\nfunction generateIntelligentValue(fieldName, fieldType) {\n  const nameLower = fieldName.toLowerCase();\n  const typeLower = fieldType.toLowerCase();\n  \n  // Analyze field name and type to generate appropriate data\n  if (nameLower.includes('id') || nameLower.includes('uuid')) {\n    return generators.uuid();\n  }\n  if (nameLower.includes('name') && !nameLower.includes('user') && !nameLower.includes('merchant')) {\n    return generators.firstName() + ' ' + generators.lastName();\n  }\n  if (nameLower.includes('email')) return generators.email();\n  if (nameLower.includes('phone')) return generators.phone();\n  if (nameLower.includes('address')) return generators.address();\n  if (nameLower.includes('company') || nameLower.includes('merchant') || nameLower.includes('store') || nameLower.includes('vendor')) {\n    return generators.merchantName ? generators.merchantName() : generators.company();\n  }\n  if (nameLower.includes('amount') || nameLower.includes('price') || nameLower.includes('cost') || nameLower.includes('total')) {\n    return generators.transactionAmount ? generators.transactionAmount() : generators.amount();\n  }\n  if (nameLower.includes('point') || nameLower.includes('score') || nameLower.includes('reward')) {\n    return generators.loyaltyPoints ? generators.loyaltyPoints() : Math.floor(Math.random() * 10000);\n  }\n  if (nameLower.includes('status') || nameLower.includes('state')) {\n    return generators.paymentStatus ? generators.paymentStatus() : ['Active', 'Inactive', 'Pending', 'Completed'][Math.floor(Math.random() * 4)];\n  }\n  if (nameLower.includes('transaction') && (nameLower.includes('type') || nameLower.includes('code') || nameLower.includes('method'))) {\n    // Weighted: 20% Cash, 80% Retail (typical analytics distribution)\n    return weightedChoice([{value: 'Cash', weight: 20}, {value: 'Retail', weight: 80}]);\n  }\n  if (nameLower.includes('currency') && !nameLower.includes('code')) {\n    // Default to INR for Indian context, but include others\n    return weightedChoice([{value: 'INR', weight: 70}, {value: 'USD', weight: 15}, {value: 'EUR', weight: 10}, {value: 'GBP', weight: 5}]);\n  }\n  if (nameLower.includes('date') || nameLower.includes('time') || nameLower.includes('timestamp')) {\n    return generators.datetime();\n  }\n  if (nameLower.includes('card') && !nameLower.includes('holder')) {\n    return generators.creditCard();\n  }\n  if (nameLower.includes('tier') || nameLower.includes('level') || nameLower.includes('rank')) {\n    return ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond'][Math.floor(Math.random() * 5)];\n  }\n  if (nameLower.includes('category') || nameLower.includes('type')) {\n    return ['Category A', 'Category B', 'Category C'][Math.floor(Math.random() * 3)];\n  }\n  if (nameLower.includes('code') || nameLower.includes('sku') || nameLower.includes('serial')) {\n    return 'CODE-' + Math.floor(Math.random() * 90000 + 10000);\n  }\n  if (nameLower.includes('quantity') || nameLower.includes('count') || nameLower.includes('number')) {\n    return Math.floor(Math.random() * 100) + 1;\n  }\n  if (nameLower.includes('percent') || nameLower.includes('rate')) {\n    return (Math.random() * 100).toFixed(1) + '%';\n  }\n  if (nameLower.includes('url') || nameLower.includes('link') || nameLower.includes('website')) {\n    return generators.url();\n  }\n  if (nameLower.includes('description') || nameLower.includes('note') || nameLower.includes('comment')) {\n    return 'Sample description for ' + fieldName;\n  }\n  \n  // Default: generate realistic-looking value based on type pattern\n  if (typeLower.includes('int') || typeLower.includes('number')) {\n    return Math.floor(Math.random() * 10000);\n  }\n  if (typeLower.includes('decimal') || typeLower.includes('float')) {\n    return (Math.random() * 1000).toFixed(2);\n  }\n  if (typeLower.includes('bool')) {\n    return Math.random() > 0.5;\n  }\n  if (typeLower.includes('date') || typeLower.includes('time')) {\n    return generators.datetime();\n  }\n  \n  // Final fallback: use field name to create descriptive value\n  return fieldName.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') + ' ' + Math.floor(Math.random() * 1000);\n}\n\n// Generate data if schema exists\nlet data = [];\nif (schema.length > 0 && recordCount > 0) {\n  for (let i = 0; i < Math.min(recordCount, 1000); i++) {\n    const record = {};\n    \n    schema.forEach(field => {\n      const generator = generators[field.type];\n      if (generator) {\n        // Use predefined generator if available\n        record[field.name] = generator();\n      } else {\n        // Use intelligent fallback for unknown types\n        record[field.name] = generateIntelligentValue(field.name, field.type);\n      }\n    });\n    \n    data.push(record);\n  }\n}\n\nreturn [{\n  json: {\n    response: {\n      message: message,\n      data: data,\n      recordCount: data.length,\n      rag_enhanced: $('Build Enhanced System Message').item.json.retrievedExamples > 0\n    }\n  }\n}];"
+      },
+      "id": "fd6e0546-3abf-42f5-b009-2fcca19a4368",
+      "name": "Data Generator (RAG)",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        400,
+        -48
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO chat_logs (session_id, user_prompt, ai_message, generated_schema, generated_data_sample, record_count, success, error_message, user_agent)\nVALUES (\n  '{{ $('Webhook Trigger').item.json.body.sessionId }}',\n  '{{ $('Webhook Trigger').item.json.body.chatInput.replace(/'/g, \"''\") }}',\n  '{{ $('Response Parser').item.json.parsedResponse.message.replace(/'/g, \"''\") }}',\n  '{{ JSON.stringify($('Response Parser').item.json.parsedResponse.schema).replace(/'/g, \"''\") }}',\n  '{{ JSON.stringify($json.response.data.slice(0, 3)).replace(/'/g, \"''\") }}',\n  {{ $json.response.recordCount }},\n  true,\n  NULL,\n  '{{ $('Webhook Trigger').item.json.headers[\"user-agent\"].replace(/'/g, \"''\") }}'\n)\nRETURNING id;",
+        "options": {}
+      },
+      "id": "e6344c3d-303d-47bf-9959-d098222d6971",
+      "name": "Save Chat Log",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        600,
+        -48
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "Qj2oredMBiLhvTqE",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $('Data Generator (RAG)').item.json }}",
+        "options": {}
+      },
+      "id": "d0514ca6-6726-4e8a-8221-f57991fad0c5",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        800,
+        -48
+      ],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Generate Query Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Query Embedding": {
+      "main": [
+        [
+          {
+            "node": "Search Qdrant for Similar Schemas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Qdrant for Similar Schemas": {
+      "main": [
+        [
+          {
+            "node": "Build Enhanced System Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Enhanced System Message": {
+      "main": [
+        [
+          {
+            "node": "AI Agent (RAG-Enhanced)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent (RAG-Enhanced)",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent (RAG-Enhanced)": {
+      "main": [
+        [
+          {
+            "node": "Response Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent (RAG-Enhanced)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response Parser": {
+      "main": [
+        [
+          {
+            "node": "Data Generator (RAG)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Generator (RAG)": {
+      "main": [
+        [
+          {
+            "node": "Save Chat Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Chat Log": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "528341b2e86c53477b94f918c416779dab805188fc81ebe05aeea5067b309de6"
+  }
+}

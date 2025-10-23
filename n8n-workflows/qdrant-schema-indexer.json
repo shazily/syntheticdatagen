@@ -1,0 +1,251 @@
+{
+  "name": "Qdrant - Schema Auto-Indexer",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger (Hourly)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 450]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT cl.id, cl.session_id, cl.user_prompt, cl.generated_schema, cl.timestamp\nFROM chat_logs cl\nINNER JOIN ai_ratings ar ON cl.id = ar.chat_log_id\nWHERE ar.rating = 'thumbs_up'\n  AND (cl.qdrant_indexed IS NULL OR cl.qdrant_indexed = false)\nORDER BY cl.timestamp DESC\nLIMIT 10;",
+        "options": {}
+      },
+      "id": "query-successful-schemas",
+      "name": "Query Successful Schemas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [450, 375],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Postgres - Feedback DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "schema_json",
+              "name": "schema",
+              "value": "={{ JSON.parse($json.generated_schema) }}",
+              "type": "object"
+            },
+            {
+              "id": "chat_log_id",
+              "name": "chatLogId",
+              "value": "={{ $json.id }}",
+              "type": "number"
+            },
+            {
+              "id": "session_id",
+              "name": "sessionId",
+              "value": "={{ $json.session_id }}",
+              "type": "string"
+            },
+            {
+              "id": "user_prompt",
+              "name": "userPrompt",
+              "value": "={{ $json.user_prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "timestamp",
+              "name": "timestamp",
+              "value": "={{ $json.timestamp }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "parse-schema",
+      "name": "Parse Schema JSON",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [650, 375]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare text representation for embedding\nconst schema = $json.schema;\nconst userPrompt = $json.userPrompt;\n\n// Create text: \"field1 type1, field2 type2, ...\"\nconst schemaText = schema\n  .map(field => `${field.name} ${field.type}`)\n  .join(', ');\n\nreturn {\n  text: schemaText,\n  schema: schema,\n  chatLogId: $json.chatLogId,\n  sessionId: $json.sessionId,\n  userPrompt: userPrompt,\n  timestamp: $json.timestamp\n};"
+      },
+      "id": "prepare-embedding-input",
+      "name": "Prepare Embedding Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 375]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/embeddings",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "all-minilm"
+            },
+            {
+              "name": "prompt",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "generate-embedding",
+      "name": "Generate Embedding",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1050, 375]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "http://host.docker.internal:6333/collections/successful_schemas/points?wait=true",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  points: [\n    {\n      id: $('Prepare Embedding Input').item.json.chatLogId,\n      vector: $json.embedding,\n      payload: {\n        schema: $('Prepare Embedding Input').item.json.schema,\n        user_prompt: $('Prepare Embedding Input').item.json.userPrompt,\n        session_id: $('Prepare Embedding Input').item.json.sessionId,\n        rating: 'thumbs_up',\n        timestamp: $('Prepare Embedding Input').item.json.timestamp,\n        indexed_at: new Date().toISOString()\n      }\n    }\n  ]\n} }}",
+        "options": {}
+      },
+      "id": "insert-to-qdrant",
+      "name": "Insert to Qdrant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 375]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE chat_logs \nSET qdrant_indexed = true \nWHERE id = {{ $('Prepare Embedding Input').item.json.chatLogId }};",
+        "options": {}
+      },
+      "id": "mark-as-indexed",
+      "name": "Mark as Indexed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1450, 375],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Postgres - Feedback DB"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (Hourly)": {
+      "main": [
+        [
+          {
+            "node": "Query Successful Schemas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Query Successful Schemas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Successful Schemas": {
+      "main": [
+        [
+          {
+            "node": "Parse Schema JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Schema JSON": {
+      "main": [
+        [
+          {
+            "node": "Prepare Embedding Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Embedding Input": {
+      "main": [
+        [
+          {
+            "node": "Generate Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Embedding": {
+      "main": [
+        [
+          {
+            "node": "Insert to Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert to Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Mark as Indexed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-13T00:00:00.000Z",
+  "versionId": "1"
+}
+

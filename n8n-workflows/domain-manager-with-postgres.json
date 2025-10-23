@@ -1,0 +1,90 @@
+{
+  "name": "Domain Manager - With PostgreSQL Registry",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "manage-domain-with-registry",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "manage-domain-with-registry"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO domain_registry (domain_name, schema, category, description, qdrant_vector_count, status)\nVALUES (\n  '{{ $json.body.domain }}',\n  '{{ JSON.stringify($json.body.schema) }}',\n  '{{ $json.body.category || \"General\" }}',\n  '{{ $json.body.description || \"Added via admin UI\" }}',\n  0,\n  'active'\n)\nON CONFLICT (domain_name) \nDO UPDATE SET \n  schema = EXCLUDED.schema,\n  category = EXCLUDED.category,\n  description = EXCLUDED.description,\n  updated_at = CURRENT_TIMESTAMP\nRETURNING *;",
+        "options": {}
+      },
+      "id": "save-to-postgres",
+      "name": "Save to PostgreSQL",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [460, 300],
+      "credentials": {
+        "postgres": {
+          "id": "Qj2oredMBiLhvTqE",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Store to Qdrant using HTTP API directly\nconst webhookData = $('Webhook Trigger').item.json.body;\nconst { domain, schema, category, description } = webhookData;\nconst pgResult = $input.item.json;\n\n// Format as text for embedding\nconst schemaText = schema.map(field => \n  `${field.name} (${field.type}): ${field.description || 'No description'}. Examples: ${(field.examples || []).join(', ')}`\n).join('\\n');\n\nconst fullText = `Domain: ${domain}\\nCategory: ${category || 'General'}\\nDescription: ${description || ''}\\n\\nSchema:\\n${schemaText}`;\n\nlet qdrantSuccess = false;\nlet errorMsg = null;\n\ntry {\n  // Generate embedding using Ollama\n  const embeddingResponse = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'http://host.docker.internal:11434/api/embeddings',\n    json: true,\n    body: {\n      model: 'llama3.2:latest',\n      prompt: fullText\n    },\n    timeout: 30000\n  });\n  \n  if (!embeddingResponse.embedding || embeddingResponse.embedding.length === 0) {\n    throw new Error('Ollama returned empty embedding');\n  }\n  \n  const embedding = embeddingResponse.embedding;\n  \n  // Store in Qdrant - use numeric ID\n  const pointId = Date.now() + Math.floor(Math.random() * 1000);\n  \n  const qdrantResponse = await this.helpers.httpRequest({\n    method: 'PUT',\n    url: 'http://host.docker.internal:6333/collections/successful_schemas/points',\n    json: true,\n    body: {\n      points: [{\n        id: pointId,\n        vector: embedding,\n        payload: {\n          domain: domain,\n          category: category || 'General',\n          description: description || '',\n          schema: JSON.stringify(schema),\n          schema_fields: schema.length,\n          text: fullText,\n          timestamp: new Date().toISOString(),\n          postgres_id: pgResult.id\n        }\n      }]\n    },\n    timeout: 5000\n  });\n  \n  qdrantSuccess = true;\n  console.log('✅ Stored to Qdrant:', domain, 'Point ID:', pointId);\n  \n} catch (error) {\n  errorMsg = error.message;\n  console.log('❌ Qdrant storage error:', error.message);\n  console.log('Stack:', error.stack);\n}\n\n// Return result with Qdrant status\nreturn [{\n  json: {\n    ...pgResult,\n    qdrant_stored: qdrantSuccess,\n    qdrant_error: errorMsg\n  }\n}];"
+      },
+      "id": "store-to-qdrant",
+      "name": "Store to Qdrant",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const storeResult = $input.item.json;\n\nreturn {\n  json: {\n    success: true,\n    message: `Domain ${storeResult.domain_name} ${$('Webhook Trigger').item.json.body.action || 'saved'} successfully`,\n    domain: storeResult.domain_name,\n    registry_id: storeResult.id,\n    qdrant_stored: storeResult.qdrant_stored || false,\n    qdrant_error: storeResult.qdrant_error || null,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "success-response",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-to-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{"node": "Save to PostgreSQL", "type": "main", "index": 0}]]
+    },
+    "Save to PostgreSQL": {
+      "main": [[{"node": "Store to Qdrant", "type": "main", "index": 0}]]
+    },
+    "Store to Qdrant": {
+      "main": [[{"node": "Success Response", "type": "main", "index": 0}]]
+    },
+    "Success Response": {
+      "main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "settings": {},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-17T00:00:00.000Z",
+  "versionId": "1"
+}
