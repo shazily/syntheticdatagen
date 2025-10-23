@@ -72,10 +72,12 @@ The application will be available at: **http://localhost**
 
 #### Step 2: Import n8n Workflows
 1. Open n8n: http://localhost:5678
-2. Import workflows from `n8n-workflows/`:
+2. Import essential workflows from `n8n-workflows/`:
    - `intelligent-generator-v3-dev-RAG-ENHANCED.json` (AI Mode)
    - `simple-generator.json` (Schema Builder)
-3. **Activate both workflows** (toggle switch)
+   - `qdrant-schema-indexer.json` (RAG System)
+   - `schema-seeder.json` (Database Seeding)
+3. **Activate all workflows** (toggle switch)
 
 #### Step 3: Configure AI Integration
 1. **Ollama Setup:**
