@@ -33,8 +33,6 @@ An intelligent, web-based synthetic data generation platform featuring dual inte
 - **Real-time Preview** - See generated data before downloading
 - **Schema Modification** - Edit AI-generated schemas on the fly
 - **1-10,000 Records** - Flexible record count generation
-- **Admin Analytics Dashboard** - Monitor usage, feedback, and AI performance
-- **Vector Database Integration** - RAG system for continuous AI learning
 - **Modern UI** - Professional, responsive interface design
 
 ## 🏗️ Architecture
@@ -52,28 +50,6 @@ An intelligent, web-based synthetic data generation platform featuring dual inte
        └─────────────▶│   DB    │
                       └─────────┘
 ```
-
-## 📸 Screenshots
-
-### Main Interface
-![Main Interface](screenshots/main-interface.png)
-*Clean, modern interface with dual generation modes*
-
-### AI Mode
-![AI Mode](screenshots/ai-mode.png)
-*Natural language data generation with intelligent schema interpretation*
-
-### Schema Builder
-![Schema Builder](screenshots/schema-builder.png)
-*Drag-and-drop visual schema builder with 30+ field types*
-
-### Admin Dashboard
-![Admin Dashboard](screenshots/admin-dashboard.png)
-*Comprehensive analytics dashboard with usage monitoring and AI insights*
-
-### Export Formats
-![Export Formats](screenshots/export-formats.png)
-*Multiple export options: CSV, Excel, JSON, XML, and SQL*
 
 ## 🚀 Quick Start
 
@@ -152,22 +128,6 @@ That's it! 🎉 You're ready to generate data.
 - "Generate 500 customer records with names, emails, addresses, and phone numbers"
 - "Create employee data for a tech company with 200 records including departments, salaries, and start dates"
 - "Generate financial transaction data with amounts, dates, currencies, and transaction IDs"
-
-### Method 3: Admin Analytics Dashboard
-
-Access the admin dashboard at `/admin.html` to monitor:
-
-1. **Usage Analytics** - Track total chats, success rates, and user feedback
-2. **AI Performance** - Monitor AI response quality and error rates
-3. **Feedback Management** - View and export user feedback data
-4. **Vector Database** - Manage RAG system and schema learning
-5. **Performance Insights** - Charts and analytics for optimization
-
-**Perfect for:**
-- Monitoring platform usage and performance
-- Analyzing AI effectiveness and user satisfaction
-- Managing the RAG system and vector database
-- Exporting analytics data for reporting
 
 ## 🎨 Supported Field Types
 
