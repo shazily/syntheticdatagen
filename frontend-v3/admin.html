@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Analytics Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+    <link rel="stylesheet" href="admin.css">
+    
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="admin-header">
+        <div class="header-content">
+            <div class="header-left">
+                <h1>📊 Admin Analytics Dashboard</h1>
+                <p class="subtitle">Monitor feedback, chat logs, and AI performance</p>
+            </div>
+            <div class="header-right">
+                <a href="/" class="btn-back">← Back to App</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+        <!-- Metrics Overview Cards -->
+        <section class="metrics-overview">
+            <div class="metric-card">
+                <div class="metric-icon">💬</div>
+                <div class="metric-info">
+                    <p class="metric-label">Total Chats</p>
+                    <p class="metric-value" id="metric-total-chats">-</p>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon">✅</div>
+                <div class="metric-info">
+                    <p class="metric-label">Success Rate</p>
+                    <p class="metric-value" id="metric-success-rate">-</p>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon">👍</div>
+                <div class="metric-info">
+                    <p class="metric-label">Thumbs Up</p>
+                    <p class="metric-value" id="metric-thumbs-up">-</p>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-icon">⭐</div>
+                <div class="metric-info">
+                    <p class="metric-label">Avg Feedback Rating</p>
+                    <p class="metric-value" id="metric-avg-rating">-</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tab Navigation -->
+        <nav class="admin-tabs">
+            <button class="admin-tab active" data-tab="feedback" onclick="switchAdminTab('feedback')">
+                User Feedback
+            </button>
+            <button class="admin-tab" data-tab="chatlogs" onclick="switchAdminTab('chatlogs')">
+                Chat Logs
+            </button>
+            <button class="admin-tab" data-tab="datarequests" onclick="switchAdminTab('datarequests')">
+                📋 Data Requests
+            </button>
+            <button class="admin-tab" data-tab="insights" onclick="switchAdminTab('insights')">
+                AI Insights
+            </button>
+            <button class="admin-tab" data-tab="vectordb" onclick="switchAdminTab('vectordb')">
+                🧠 Vector DB
+            </button>
+        </nav>
+
+        <!-- Tab Content -->
+        <div class="admin-content">
+            <!-- Feedback Tab -->
+            <section id="tab-feedback" class="tab-panel active">
+                <div class="panel-header">
+                    <h2>User Feedback</h2>
+                    <button class="btn-export" onclick="exportFeedback()">📥 Export CSV</button>
+                </div>
+                <div class="data-table-container">
+                    <table class="data-table" id="feedback-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Rating</th>
+                                <th>Comment</th>
+                                <th>Email</th>
+                                <th>Updates</th>
+                            </tr>
+                        </thead>
+                        <tbody id="feedback-tbody">
+                            <tr>
+                                <td colspan="5" class="loading-cell">Loading feedback data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Chat Logs Tab -->
+            <section id="tab-chatlogs" class="tab-panel">
+                <div class="panel-header">
+                    <h2>AI Chat Logs</h2>
+                    <div class="panel-actions">
+                        <input type="text" id="search-chatlogs" placeholder="Search prompts..." class="search-input">
+                        <button class="btn-export" onclick="exportChatLogs()">📥 Export CSV</button>
+                    </div>
+                </div>
+                <div class="data-table-container">
+                    <table class="data-table" id="chatlogs-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>User Prompt</th>
+                                <th>AI Message</th>
+                                <th>Fields</th>
+                                <th>Records</th>
+                                <th>Rating</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="chatlogs-tbody">
+                            <tr>
+                                <td colspan="7" class="loading-cell">Loading chat logs...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Data Requests Tab -->
+            <section id="tab-datarequests" class="tab-panel">
+                <div class="panel-header">
+                    <h2>Data Requests (>1000 Records)</h2>
+                    <button class="btn-export" onclick="exportDataRequests()">📥 Export CSV</button>
+                </div>
+                <div class="data-table-container">
+                    <table id="data-requests-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Email</th>
+                                <th>Topic</th>
+                                <th>Requested Records</th>
+                                <th>Schema Fields</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="data-requests-body">
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 40px; color: #94A3B8;">
+                                    Loading data requests...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- AI Insights Tab -->
+            <section id="tab-insights" class="tab-panel">
+                <div class="panel-header">
+                    <h2>AI Performance Insights</h2>
+                </div>
+                
+                <div class="insights-grid">
+                    <div class="insight-card">
+                        <h3>Rating Distribution</h3>
+                        <canvas id="rating-chart"></canvas>
+                    </div>
+                    
+                    <div class="insight-card">
+                        <h3>Success vs. Errors</h3>
+                        <canvas id="success-chart"></canvas>
+                    </div>
+                    
+                    <div class="insight-card full-width">
+                        <h3>Top Requested Data Topics</h3>
+                        <div id="top-topics" class="topic-list">
+                            <p class="loading-text">Loading topic data...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Vector DB Tab -->
+            <section id="tab-vectordb" class="tab-panel">
+                <div class="panel-header">
+                    <h2>🧠 Vector Database Management</h2>
+                    <p>Enrich the AI's knowledge base with quality schemas</p>
+                </div>
+                
+                <!-- Vector DB Stats -->
+                <div class="vector-stats">
+                    <div class="stat-box">
+                        <h4>Total Domains</h4>
+                        <p id="domain-total" class="stat-number">-</p>
+                    </div>
+                    <div class="stat-box">
+                        <h4>Total Vectors</h4>
+                        <p id="vector-total" class="stat-number">-</p>
+                    </div>
+                    <div class="stat-box">
+                        <h4>Collection Status</h4>
+                        <p id="vector-status" class="stat-badge">-</p>
+                    </div>
+                </div>
+
+                <!-- Domain Management -->
+                <div class="domain-management">
+                    <div class="management-header">
+                        <h3>🏢 Domain Collections</h3>
+                        <div class="management-actions">
+                            <button id="btn-update-existing" class="btn-secondary">Update Existing</button>
+                            <button id="btn-add-new" class="btn-primary">Add New Domain</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Domains Display -->
+                    <div id="domains-container" class="domains-container">
+                        <p class="loading-text">Loading domains...</p>
+                    </div>
+                </div>
+
+                <!-- Update Existing Modal -->
+                <div id="update-modal" class="modal-overlay" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>📝 Update Existing Domain</h3>
+                            <button class="modal-close" onclick="closeUpdateModal()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label>Select Domain:</label>
+                                <select id="domain-select" class="form-select">
+                                    <option value="">Choose a domain...</option>
+                                </select>
+                            </div>
+                   <div class="form-group">
+                       <label>Current Fields:</label>
+                       <div id="current-fields" class="current-fields"></div>
+                   </div>
+                   <div class="form-group">
+                       <label>Add New Fields:</label>
+                       <div class="field-creation-method">
+                           <label class="radio-label">
+                               <input type="radio" name="update-field-method" value="form" checked>
+                               <span>Form Builder (Easy)</span>
+                           </label>
+                           <label class="radio-label">
+                               <input type="radio" name="update-field-method" value="json">
+                               <span>JSON Array (Advanced)</span>
+                           </label>
+                       </div>
+                       
+                       <!-- Form Builder for New Fields -->
+                       <div id="update-form-builder" class="field-builder">
+                           <div class="form-group">
+                               <label>Number of New Fields:</label>
+                               <input type="number" id="new-field-count" class="form-input" value="2" min="1" max="10" />
+                           </div>
+                           <div id="new-fields-container" class="fields-container">
+                               <!-- Dynamic new fields will be added here -->
+                           </div>
+                           <button type="button" id="btn-add-new-field" class="btn-secondary">+ Add New Field</button>
+                       </div>
+                       
+                       <!-- JSON Entry for New Fields -->
+                       <div id="update-json-builder" class="field-builder" style="display: none;">
+                           <div class="form-group">
+                               <label>New Fields (JSON Array):</label>
+                               <textarea id="new-fields" rows="6" class="form-textarea" placeholder='[
+ {"name": "new_field", "type": "string"},
+ {"name": "another_field", "type": "integer"}
+]'></textarea>
+                           </div>
+                       </div>
+                   </div>
+                            <div class="modal-actions">
+                                <button id="btn-update-domain" class="btn-primary">Update Domain</button>
+                                <button class="btn-secondary" onclick="closeUpdateModal()">Cancel</button>
+                            </div>
+                            <div id="update-result" class="result-message"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add New Modal -->
+                <div id="add-modal" class="modal-overlay" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>➕ Add New Domain</h3>
+                            <button class="modal-close" onclick="closeAddModal()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label>Domain Name:</label>
+                                <input type="text" id="new-domain-name" class="form-input" placeholder="e.g., Healthcare, Logistics, etc." />
+                            </div>
+                            <div class="form-group">
+                                <label>Creation Method:</label>
+                                <div class="method-selector">
+                                    <label class="radio-label">
+                                        <input type="radio" name="creation-method" value="manual" checked>
+                                        <span>Manual Entry</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="creation-method" value="ai">
+                                        <span>AI Generation</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- Manual Entry -->
+                            <div id="manual-entry" class="method-content">
+                                <div class="form-group">
+                                    <label>Creation Method:</label>
+                                    <div class="field-creation-method">
+                                        <label class="radio-label">
+                                            <input type="radio" name="field-method" value="form" checked>
+                                            <span>Form Builder (Easy)</span>
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="field-method" value="json">
+                                            <span>JSON Array (Advanced)</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Form Builder -->
+                                <div id="form-builder" class="field-builder">
+                                    <div class="form-group">
+                                        <label>Number of Fields:</label>
+                                        <input type="number" id="field-count-manual" class="form-input" value="5" min="1" max="20" />
+                                    </div>
+                                    <div id="fields-container" class="fields-container">
+                                        <!-- Dynamic fields will be added here -->
+                                    </div>
+                                    <button type="button" id="btn-add-field" class="btn-secondary">+ Add Field</button>
+                                </div>
+                                
+                                <!-- JSON Entry -->
+                                <div id="json-builder" class="field-builder" style="display: none;">
+                           <div class="form-group">
+                               <label>Fields (JSON Array):</label>
+                               <textarea id="manual-fields" rows="10" class="form-textarea" placeholder='[
+ {
+   "name": "product_name",
+   "type": "string",
+   "description": "Consumer-facing product title",
+   "examples": ["4K Smart TV", "Ergonomic Office Chair", "Organic Green Tea"]
+ },
+ {
+   "name": "price",
+   "type": "decimal",
+   "description": "Product price in USD",
+   "examples": [299.99, 149.50, 89.99]
+ }
+]'></textarea>
+                           </div>
+                                </div>
+                            </div>
+                            
+                            <!-- AI Generation -->
+                            <div id="ai-entry" class="method-content" style="display: none;">
+                                <div class="form-group">
+                                    <label>Topic Description:</label>
+                                    <input type="text" id="ai-topic" class="form-input" placeholder="e.g., 'hospital patient records', 'shipping logistics'" />
+                                </div>
+                            <div class="form-group">
+                                <label>Number of Fields:</label>
+                                <input type="number" id="field-count" class="form-input" value="7" min="3" max="15" placeholder="Enter number of fields (3-15)" />
+                            </div>
+                            <div class="ai-generate-section">
+                                <button id="btn-generate-ai" class="btn-secondary">🤖 Generate with AI</button>
+                            </div>
+                                <div id="ai-preview" class="ai-preview"></div>
+                            </div>
+                            
+                            <!-- Common fields for all methods -->
+                            <div class="form-group">
+                                <label>Domain Description (optional):</label>
+                                <input type="text" id="domain-description" class="form-input" placeholder="Brief description of this domain" />
+                            </div>
+                            <div class="form-group">
+                                <label>Category (optional):</label>
+                                <select id="domain-category" class="form-input">
+                                    <option value="General">General</option>
+                                    <option value="Healthcare">Healthcare</option>
+                                    <option value="Financial">Financial</option>
+                                    <option value="E-commerce">E-commerce</option>
+                                    <option value="Logistics">Logistics</option>
+                                    <option value="Customer Data">Customer Data</option>
+                                    <option value="Hospitality">Hospitality</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            
+                            <div class="modal-actions">
+                                <button id="btn-add-domain" class="btn-primary">Add Domain</button>
+                                <button class="btn-secondary" onclick="closeAddModal()">Cancel</button>
+                            </div>
+                            <div id="add-result" class="result-message"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="admin-footer">
+        <p>Admin Dashboard - Internal Use Only | Created by Shaziily Munawar</p>
+    </footer>
+
+    <link rel="stylesheet" href="admin.css?v=4">
+    <script src="admin.js?v=19"></script>
+</body>
+</html>
+

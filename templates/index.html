@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synthetic Data Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-database me-2"></i>
+                Synthetic Data Generator
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#generator">
+                            <i class="fas fa-magic me-1"></i>Generator
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#schemas">
+                            <i class="fas fa-save me-1"></i>Saved Schemas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">
+                            <i class="fas fa-info-circle me-1"></i>About
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container-fluid py-4">
+        <!-- Hero Section -->
+        <div class="row mb-5">
+            <div class="col-12 text-center">
+                <h1 class="display-4 fw-bold text-primary mb-3">
+                    <i class="fas fa-robot me-3"></i>
+                    AI-Powered Synthetic Data Generator
+                </h1>
+                <p class="lead text-muted">
+                    Generate realistic test data with the power of AI. Describe what you need, and we'll create it for you.
+                </p>
+            </div>
+        </div>
+
+        <!-- Generator Section -->
+        <div id="generator" class="row">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow-lg">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">
+                            <i class="fas fa-wand-magic-sparkles me-2"></i>
+                            Data Generation Wizard
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Step 1: User Request -->
+                        <div class="step" id="step1">
+                            <h4 class="mb-3">Step 1: Describe Your Data</h4>
+                            <div class="mb-3">
+                                <label for="userRequest" class="form-label">
+                                    What kind of data do you need? Be specific about fields and relationships.
+                                </label>
+                                <textarea 
+                                    class="form-control" 
+                                    id="userRequest" 
+                                    rows="4" 
+                                    placeholder="Example: I need customer data with names, emails, phone numbers, addresses, and registration dates. Also include order history with product names, quantities, and prices."
+                                ></textarea>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <button class="btn btn-outline-secondary" disabled>
+                                    <i class="fas fa-arrow-left me-1"></i>Previous
+                                </button>
+                                <button class="btn btn-primary" onclick="generateSchema()">
+                                    Generate Schema <i class="fas fa-arrow-right ms-1"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Schema Review -->
+                        <div class="step d-none" id="step2">
+                            <h4 class="mb-3">Step 2: Review Generated Schema</h4>
+                            <div id="schemaPreview" class="mb-3"></div>
+                            <div class="d-flex justify-content-between">
+                                <button class="btn btn-outline-secondary" onclick="goToStep(1)">
+                                    <i class="fas fa-arrow-left me-1"></i>Previous
+                                </button>
+                                <button class="btn btn-primary" onclick="goToStep(3)">
+                                    Generate Data <i class="fas fa-arrow-right ms-1"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Data Generation -->
+                        <div class="step d-none" id="step3">
+                            <h4 class="mb-3">Step 3: Configure Data Generation</h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="numRows" class="form-label">Number of Records</label>
+                                        <input type="number" class="form-control" id="numRows" value="100" min="1" max="10000">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="format" class="form-label">Output Format</label>
+                                        <select class="form-select" id="format">
+                                            <option value="csv">CSV</option>
+                                            <option value="json">JSON</option>
+                                            <option value="python">Python Code</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <button class="btn btn-outline-secondary" onclick="goToStep(2)">
+                                    <i class="fas fa-arrow-left me-1"></i>Previous
+                                </button>
+                                <button class="btn btn-success" onclick="generateData()">
+                                    <i class="fas fa-download me-1"></i>Generate & Download
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Field Types Reference -->
+        <div class="row mt-5">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0">
+                            <i class="fas fa-list me-2"></i>
+                            Available Field Types
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="fieldTypes" class="row"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Saved Schemas -->
+        <div id="schemas" class="row mt-5">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-save me-2"></i>
+                            Saved Schemas
+                        </h4>
+                        <button class="btn btn-sm btn-outline-primary" onclick="loadSchemas()">
+                            <i class="fas fa-refresh me-1"></i>Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="savedSchemas"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- About Section -->
+        <div id="about" class="row mt-5">
+            <div class="col-lg-8 mx-auto">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h4 class="mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            About Synthetic Data Generator
+                        </h4>
+                        <p class="text-muted">
+                            This application uses AI to understand your data requirements and generate realistic synthetic data.
+                            Perfect for testing, development, and prototyping applications without using real user data.
+                        </p>
+                        <div class="row mt-4">
+                            <div class="col-md-4">
+                                <div class="feature">
+                                    <i class="fas fa-brain fa-2x text-primary mb-2"></i>
+                                    <h5>AI-Powered</h5>
+                                    <p>Uses Ollama LLM to understand your requirements</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="feature">
+                                    <i class="fas fa-download fa-2x text-success mb-2"></i>
+                                    <h5>Multiple Formats</h5>
+                                    <p>Export as CSV, JSON, or Python code</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="feature">
+                                    <i class="fas fa-shield-alt fa-2x text-warning mb-2"></i>
+                                    <h5>Privacy-First</h5>
+                                    <p>Generate data locally, no external dependencies</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Loading Modal -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-4">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h5 id="loadingText">Processing your request...</h5>
+                    <p class="text-muted mb-0">This may take a few moments</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

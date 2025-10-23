@@ -1,0 +1,16 @@
+{
+  "schema": [
+    {
+      "name": "first_name",
+      "type": "firstName",
+      "blankPercentage": 0
+    },
+    {
+      "name": "email",
+      "type": "email",
+      "blankPercentage": 10
+    }
+  ],
+  "recordCount": 5,
+  "exportFormat": "json"
+}

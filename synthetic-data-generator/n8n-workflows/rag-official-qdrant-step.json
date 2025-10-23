@@ -1,0 +1,162 @@
+{
+  "name": "RAG - Official Qdrant (Step Test)",
+  "nodes": [
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "path": "test-rag-official",
+        "responseMode": "responseNode"
+      },
+      "id": "Webhook_Trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json || {};\nconst text = input.chatInput ?? input.topicInput ?? input.prompt ?? input.query ?? \"\";\nreturn [{ json: { text, sessionId: input.sessionId ?? 'local-test-001', domain: input.domain ?? 'payments', original: input } }];"
+      },
+      "id": "Prepare_Search_Text",
+      "name": "Prepare Search Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "model": "all-minilm:latest",
+        "text": "={{$json.text}}"
+      },
+      "id": "Embeddings_Ollama",
+      "name": "Embeddings Ollama",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [
+        820,
+        320
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "ollama-credentials",
+          "name": "Ollama API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize Ollama response into { embedding: number[] }\nconst r = $json || {};\nlet embedding = r.embedding;\nif (!embedding && Array.isArray(r.data) && r.data[0]?.embedding) {\n  embedding = r.data[0].embedding;\n}\nif (!embedding && r.result?.embedding) {\n  embedding = r.result.embedding;\n}\nif (!embedding && r.embedding?.vector) {\n  embedding = r.embedding.vector;\n}\nreturn [{ json: { ...r, embedding } }];"
+      },
+      "id": "Extract_Embedding",
+      "name": "Extract Embedding",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        990,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "search",
+        "operation": "queryPoints",
+        "collection": "successful_schemas",
+        "limit": 5,
+        "withPayload": true,
+        "vector": "={{$json.embedding || $json.result?.embedding}}"
+      },
+      "id": "Qdrant_Search",
+      "name": "Qdrant - Query Points",
+      "type": "n8n-nodes-qdrant.qdrant",
+      "typeVersion": 1,
+      "position": [
+        1140,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "responseBody": "={\n  \"vectorLength\": $json.embedding ? $json.embedding.length : ($json.result?.embedding ? $json.result.embedding.length : 0),\n  \"hits\": $json.result ?? $json\n}"
+      },
+      "id": "Respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        320
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Search Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Search Text": {
+      "main": [
+        [
+          {
+            "node": "Embeddings Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Ollama": {
+      "main": [
+        [
+          {
+            "node": "Extract Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Embedding": {
+      "main": [
+        [
+          {
+            "node": "Qdrant - Query Points",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant - Query Points": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "version": 2
+}
+
+

@@ -1,0 +1,262 @@
+{
+  "name": "Admin API - Analytics Dashboard",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "admin/feedback",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-feedback-endpoint",
+      "name": "GET Feedback",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 200],
+      "webhookId": "admin-feedback"
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "admin/chatlogs",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-chatlogs-endpoint",
+      "name": "GET Chat Logs",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 400],
+      "webhookId": "admin-chatlogs"
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "admin/metrics",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-metrics-endpoint",
+      "name": "GET Metrics",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 600],
+      "webhookId": "admin-metrics"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM feedback ORDER BY timestamp DESC LIMIT 100;",
+        "options": {
+          "queryBatching": "independently"
+        }
+      },
+      "id": "query-feedback",
+      "name": "Query Feedback",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [400, 200],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Postgres - Feedback DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "data",
+        "options": {}
+      },
+      "id": "aggregate-feedback",
+      "name": "Aggregate Feedback",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  cl.*,\n  ar.rating,\n  ar.feedback_comment as rating_comment,\n  ar.timestamp as rating_timestamp\nFROM chat_logs cl\nLEFT JOIN ai_ratings ar ON cl.id = ar.chat_log_id\nORDER BY cl.timestamp DESC\nLIMIT 100;",
+        "options": {
+          "queryBatching": "independently"
+        }
+      },
+      "id": "query-chatlogs",
+      "name": "Query Chat Logs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [400, 400],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Postgres - Feedback DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "data",
+        "options": {}
+      },
+      "id": "aggregate-chatlogs",
+      "name": "Aggregate Chat Logs",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [500, 400]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  (SELECT COUNT(*) FROM chat_logs) as total_chats,\n  (SELECT COUNT(*) FROM chat_logs WHERE success = true) as successful_chats,\n  (SELECT COUNT(*) FROM ai_ratings WHERE rating = 'thumbs_up') as thumbs_up_count,\n  (SELECT COUNT(*) FROM ai_ratings WHERE rating = 'thumbs_down') as thumbs_down_count,\n  (SELECT COUNT(*) FROM feedback) as total_feedback,\n  (SELECT AVG(rating) FROM feedback) as avg_feedback_rating;",
+        "options": {}
+      },
+      "id": "query-metrics",
+      "name": "Query Metrics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [400, 600],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "Postgres - Feedback DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.data }}"
+      },
+      "id": "respond-feedback",
+      "name": "Respond Feedback",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [600, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.data }}"
+      },
+      "id": "respond-chatlogs",
+      "name": "Respond Chat Logs",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [600, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "respond-metrics",
+      "name": "Respond Metrics",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [600, 600]
+    }
+  ],
+  "connections": {
+    "GET Feedback": {
+      "main": [
+        [
+          {
+            "node": "Query Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Chat Logs": {
+      "main": [
+        [
+          {
+            "node": "Query Chat Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GET Metrics": {
+      "main": [
+        [
+          {
+            "node": "Query Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Feedback": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Feedback": {
+      "main": [
+        [
+          {
+            "node": "Respond Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Chat Logs": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Chat Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Chat Logs": {
+      "main": [
+        [
+          {
+            "node": "Respond Chat Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Metrics": {
+      "main": [
+        [
+          {
+            "node": "Respond Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-12T00:00:00.000Z",
+  "versionId": "1"
+}
+

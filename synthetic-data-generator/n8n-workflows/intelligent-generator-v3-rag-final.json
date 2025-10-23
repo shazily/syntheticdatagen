@@ -1,0 +1,359 @@
+{
+  "name": "Synthetic Data - Intelligent Generator V3 (RAG-Final)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-intelligent-v3",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "f94a2f25-4c38-4e2a-8739-d7345fdd2dc5",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        -864,
+        -176
+      ],
+      "webhookId": "generate-intelligent-v3-webhook",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "user-prompt",
+              "name": "query",
+              "value": "={{ $json.body.chatInput || $json.body.prompt || $json.chatInput || $json.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "session-id",
+              "name": "sessionId",
+              "value": "={{ $json.body.sessionId || $json.sessionId || 'default-session' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract-query",
+      "name": "Extract Query",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        -672,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "model": "llama3.2:latest"
+      },
+      "id": "embeddings-ollama",
+      "name": "Embeddings Ollama",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        32
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "jmFnQptmLMNT8nwD",
+          "name": "Ollama account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "load",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "successful_schemas",
+          "mode": "name"
+        },
+        "prompt": "={{ $json.query }}",
+        "options": {
+          "topK": 3
+        }
+      },
+      "id": "qdrant-search",
+      "name": "Qdrant Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        -176
+      ],
+      "credentials": {
+        "qdrantApi": {
+          "id": "3GkW3v6QuMuEQfVp",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build enhanced system message with retrieved schemas\nconst retrievedDocs = $input.all();\nconst webhookData = $('Webhook Trigger').item.json;\nconst userQuery = $('Extract Query').item.json.query;\n\nlet enhancedSystemMessage = \"You are a specialized synthetic data generator assistant. Your ONLY purpose is to help users generate test/dummy/sample data for various use cases.\\n\\nYOUR ROLE:\\n- Generate synthetic data for ANY use case requested by users\\n- Accept all requests related to data generation, datasets, records, or samples\\n- ONLY decline if asked completely unrelated questions\\n- If user mentions \\\"data\\\", \\\"create\\\", \\\"generate\\\", \\\"dataset\\\", \\\"records\\\" - IT'S A VALID REQUEST, process it!\\n\\nRESPONSE FORMAT (JSON only):\\n{\\n  \\\"message\\\": \\\"Brief explanation of what you're generating\\\",\\n  \\\"schema\\\": [\\n    {\\\"name\\\": \\\"field_name\\\", \\\"type\\\": \\\"field_type\\\"},\\n    ...\\n  ],\\n  \\\"recordCount\\\": number (max 1000)\\n}\\n\\n\";\n\n// Add retrieved schemas from Qdrant\nlet schemasFound = 0;\nif (retrievedDocs && retrievedDocs.length > 0) {\n  enhancedSystemMessage += \"\\n\\nRELEVANT SCHEMA TEMPLATES FROM DATABASE:\\n\";\n  \n  retrievedDocs.forEach((item, index) => {\n    const json = item.json;\n    const doc = json.document || json;\n    const content = doc.pageContent || doc.metadata?.description || '';\n    const score = json.score || 0;\n    \n    if (content) {\n      schemasFound++;\n      const similarity = (score * 100).toFixed(0);\n      enhancedSystemMessage += `\\nTemplate ${index + 1} (${similarity}% relevant):\\n${content}\\n`;\n    }\n  });\n  \n  if (schemasFound > 0) {\n    enhancedSystemMessage += \"\\nUse these templates as reference and adapt to user's specific needs.\\n\";\n  }\n}\n\nenhancedSystemMessage += \"\\nBe intelligent, creative, and contextually aware. Design schemas that truly fit what users need!\";\n\nreturn [{\n  json: {\n    systemMessage: enhancedSystemMessage,\n    retrievedExamples: schemasFound,\n    webhookData: webhookData.body,\n    userQuery: userQuery\n  }\n}];"
+      },
+      "id": "build-context",
+      "name": "Build Enhanced System Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        -176
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Build Enhanced System Message').item.json.webhookData.sessionId || 'default-session' }}",
+        "contextWindowLength": 10
+      },
+      "id": "chat-memory",
+      "name": "Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        208,
+        80
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Build Enhanced System Message').item.json.userQuery }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "={{ $('Build Enhanced System Message').item.json.systemMessage }}"
+        }
+      },
+      "id": "ai-agent",
+      "name": "AI Agent (RAG-Enhanced)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -64,
+        -176
+      ],
+      "typeVersion": 1.8
+    },
+    {
+      "parameters": {
+        "model": "llama3.2:latest",
+        "options": {
+          "temperature": 0.7,
+          "keepAlive": "1h",
+          "numCtx": 2048
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -112,
+        96
+      ],
+      "id": "ollama-chat",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "jmFnQptmLMNT8nwD",
+          "name": "Ollama account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parse AI response - extract first valid JSON object only\nconst aiOutput = $input.item.json.output || '';\n\nlet parsedResponse;\ntry {\n  let braceCount = 0;\n  let startIndex = -1;\n  let endIndex = -1;\n  \n  for (let i = 0; i < aiOutput.length; i++) {\n    if (aiOutput[i] === '{') {\n      if (braceCount === 0) startIndex = i;\n      braceCount++;\n    } else if (aiOutput[i] === '}') {\n      braceCount--;\n      if (braceCount === 0 && startIndex !== -1) {\n        endIndex = i;\n        break;\n      }\n    }\n  }\n  \n  if (startIndex !== -1 && endIndex !== -1) {\n    const jsonStr = aiOutput.substring(startIndex, endIndex + 1);\n    parsedResponse = JSON.parse(jsonStr);\n    \n    if (!parsedResponse.schema || !Array.isArray(parsedResponse.schema)) {\n      throw new Error('Invalid schema format');\n    }\n    if (typeof parsedResponse.recordCount !== 'number') {\n      parsedResponse.recordCount = 100;\n    }\n  } else {\n    throw new Error('No JSON found in response');\n  }\n} catch (error) {\n  parsedResponse = {\n    message: \"I understood your request. Let me generate some sample data for you.\",\n    schema: [\n      {name: \"id\", type: \"uuid\"},\n      {name: \"name\", type: \"firstName\"},\n      {name: \"email\", type: \"email\"},\n      {name: \"created_at\", type: \"datetime\"}\n    ],\n    recordCount: 100\n  };\n}\n\nreturn [{\n  json: {\n    parsedResponse: parsedResponse,\n    originalOutput: aiOutput,\n    ragEnhanced: $('Build Enhanced System Message').item.json.retrievedExamples > 0,\n    schemasUsed: $('Build Enhanced System Message').item.json.retrievedExamples\n  }\n}];"
+      },
+      "id": "response-parser",
+      "name": "Response Parser",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        144,
+        -176
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "functionCode": "// Include your existing data generator code here (abbreviated for brevity)\nconst parsedResponse = $input.item.json.parsedResponse;\nconst schema = parsedResponse.schema || [];\nconst recordCount = parsedResponse.recordCount || 100;\nconst message = parsedResponse.message || '';\nconst ragEnhanced = $input.item.json.ragEnhanced;\nconst schemasUsed = $input.item.json.schemasUsed;\n\n// [Your complete generators object from the original workflow]\nconst generators = {\n  firstName: () => {\n    const names = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer'];\n    return names[Math.floor(Math.random() * names.length)];\n  },\n  lastName: () => {\n    const names = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones'];\n    return names[Math.floor(Math.random() * names.length)];\n  },\n  email: () => {\n    const first = generators.firstName().toLowerCase();\n    const last = generators.lastName().toLowerCase();\n    return `${first}.${last}@example.com`;\n  },\n  phone: () => {\n    const area = Math.floor(Math.random() * 900) + 100;\n    const prefix = Math.floor(Math.random() * 900) + 100;\n    const line = Math.floor(Math.random() * 9000) + 1000;\n    return `(${area}) ${prefix}-${line}`;\n  },\n  uuid: () => {\n    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n      const r = Math.random() * 16 | 0;\n      const v = c === 'x' ? r : (r & 0x3 | 0x8);\n      return v.toString(16);\n    });\n  },\n  datetime: () => new Date().toISOString(),\n  date: () => new Date().toISOString().split('T')[0],\n  integer: () => Math.floor(Math.random() * 10000),\n  amount: () => (Math.random() * 10000).toFixed(2),\n  creditCard: () => {\n    const parts = [];\n    for (let i = 0; i < 4; i++) {\n      parts.push(Math.floor(Math.random() * 9000) + 1000);\n    }\n    return parts.join('-');\n  }\n};\n\nfunction generateIntelligentValue(fieldName, fieldType) {\n  const nameLower = fieldName.toLowerCase();\n  if (nameLower.includes('id')) return generators.uuid();\n  if (nameLower.includes('name')) return generators.firstName() + ' ' + generators.lastName();\n  if (nameLower.includes('email')) return generators.email();\n  if (nameLower.includes('phone')) return generators.phone();\n  if (nameLower.includes('amount') || nameLower.includes('price')) return generators.amount();\n  if (nameLower.includes('date') || nameLower.includes('time')) return generators.datetime();\n  if (nameLower.includes('card')) return generators.creditCard();\n  return fieldName + '_' + Math.floor(Math.random() * 1000);\n}\n\nlet data = [];\nfor (let i = 0; i < Math.min(recordCount, 1000); i++) {\n  const record = {};\n  schema.forEach(field => {\n    const generator = generators[field.type];\n    record[field.name] = generator ? generator() : generateIntelligentValue(field.name, field.type);\n  });\n  data.push(record);\n}\n\nreturn [{\n  json: {\n    response: {\n      message: message,\n      data: data,\n      recordCount: data.length,\n      rag_enhanced: ragEnhanced,\n      schemas_used: schemasUsed\n    }\n  }\n}];"
+      },
+      "id": "data-generator",
+      "name": "Data Generator (RAG)",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        336,
+        -176
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO chat_logs (session_id, user_prompt, ai_message, generated_schema, generated_data_sample, record_count, success, error_message, user_agent)\nVALUES (\n  'rag-session',\n  'credit card data',\n  '{{ $json.response.message.replace(/'/g, \"''\") }}',\n  '[]',\n  '{{ JSON.stringify($json.response.data.slice(0, 3)) }}',\n  {{ $json.response.recordCount }},\n  true,\n  NULL,\n  'rag-workflow'\n)\nRETURNING id;",
+        "options": {}
+      },
+      "id": "save-log",
+      "name": "Save Chat Log",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        544,
+        -176
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "Qj2oredMBiLhvTqE",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $('Data Generator (RAG)').item.json }}",
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        736,
+        -176
+      ],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Query": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Ollama": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store": {
+      "main": [
+        [
+          {
+            "node": "Build Enhanced System Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Enhanced System Message": {
+      "main": [
+        [
+          {
+            "node": "AI Agent (RAG-Enhanced)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent (RAG-Enhanced)",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent (RAG-Enhanced)": {
+      "main": [
+        [
+          {
+            "node": "Response Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent (RAG-Enhanced)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response Parser": {
+      "main": [
+        [
+          {
+            "node": "Data Generator (RAG)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Generator (RAG)": {
+      "main": [
+        [
+          {
+            "node": "Save Chat Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Chat Log": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "version": 2
+}

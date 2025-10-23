@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-M4GSMK94');</script>
+    <!-- End Google Tag Manager -->
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synthetic Data Generator V2</title>
+    
+    <link rel="stylesheet" href="style.css?v=20251022221659">
+</head>
+<body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-M4GSMK94"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo-section">
+                <div class="logo">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <path d="M9 9h6v6H9z"/>
+                    </svg>
+                </div>
+                <div class="title-section">
+                    <h1>Synthetic Data Generator</h1>
+                    <p>Generate complex synthetic data with AI-powered intelligence</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <a href="javascript:void(0)" onclick="openFeedbackModal()" class="feedback-button-header" title="Share your feedback">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span>Feedback</span>
+                </a>
+                <span class="beta-badge">BETA</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Tips Banner -->
+        <div class="tips-banner">
+            <span class="tips-icon">💡</span>
+            <span><strong>Tip:</strong> Use drag & drop for quick schemas, or switch to AI Chat for natural language generation!</span>
+        </div>
+
+        <!-- Tab Navigation - KEEP V1 TAB SWITCHING -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="builder">
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+                </svg>
+                Schema Builder
+            </button>
+            <button class="tab-btn" data-tab="chat">
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z"/>
+                </svg>
+                A.I Mode
+            </button>
+        </div>
+
+        <!-- Schema Builder Tab -->
+        <div class="tab-content active" id="builder-tab">
+            <div class="builder-layout">
+                <!-- Left Panel: Field Types with Collapsible Categories -->
+                <div class="field-types-panel">
+                    <h3>Field Types</h3>
+                    <p class="panel-description">Click category to expand/collapse, then drag fields</p>
+                    
+                    <!-- Personal Data -->
+                    <div class="field-category">
+                        <div class="category-header">
+                            <span class="toggle-icon">▶</span>
+                            <span class="category-name">Personal Data</span>
+                            <span class="category-count">6</span>
+                        </div>
+                        <div class="category-fields">
+                            <div class="field-type" draggable="true" data-type="firstName">
+                                <span class="field-icon">👤</span>
+                                <span class="field-name">First Name</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="lastName">
+                                <span class="field-icon">👤</span>
+                                <span class="field-name">Last Name</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="email">
+                                <span class="field-icon">📧</span>
+                                <span class="field-name">Email</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="phone">
+                                <span class="field-icon">📱</span>
+                                <span class="field-name">Phone</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="address">
+                                <span class="field-icon">🏠</span>
+                                <span class="field-name">Address</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="birthdate">
+                                <span class="field-icon">🎂</span>
+                                <span class="field-name">Birthdate</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Business Data -->
+                    <div class="field-category">
+                        <div class="category-header">
+                            <span class="toggle-icon">▶</span>
+                            <span class="category-name">Business Data</span>
+                            <span class="category-count">3</span>
+                        </div>
+                        <div class="category-fields">
+                            <div class="field-type" draggable="true" data-type="company">
+                                <span class="field-icon">🏢</span>
+                                <span class="field-name">Company</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="jobTitle">
+                                <span class="field-icon">💼</span>
+                                <span class="field-name">Job Title</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="department">
+                                <span class="field-icon">🏛️</span>
+                                <span class="field-name">Department</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Enhanced Financial Data with Accounting Fields -->
+                    <div class="field-category">
+                        <div class="category-header">
+                            <span class="toggle-icon">▶</span>
+                            <span class="category-name">Financial Data</span>
+                            <span class="category-count">12</span>
+                        </div>
+                        <div class="category-fields">
+                            <div class="field-type" draggable="true" data-type="creditCard">
+                                <span class="field-icon">💳</span>
+                                <span class="field-name">Credit Card</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="currency">
+                                <span class="field-icon">💰</span>
+                                <span class="field-name">Currency</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="amount">
+                                <span class="field-icon">💵</span>
+                                <span class="field-name">Amount</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="iban">
+                                <span class="field-icon">🏦</span>
+                                <span class="field-name">IBAN</span>
+                            </div>
+                            <!-- NEW Accounting Fields -->
+                            <div class="field-type" draggable="true" data-type="accountNumber">
+                                <span class="field-icon">📊</span>
+                                <span class="field-name">Account Number</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="invoiceNumber">
+                                <span class="field-icon">📄</span>
+                                <span class="field-name">Invoice Number</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="taxId">
+                                <span class="field-icon">🧾</span>
+                                <span class="field-name">Tax ID</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="ledgerCode">
+                                <span class="field-icon">📒</span>
+                                <span class="field-name">Ledger Code</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="costCenter">
+                                <span class="field-icon">🎯</span>
+                                <span class="field-name">Cost Center</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="transactionId">
+                                <span class="field-icon">🔖</span>
+                                <span class="field-name">Transaction ID</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="transactionAmount">
+                                <span class="field-icon">💸</span>
+                                <span class="field-name">Transaction Amount</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="paymentStatus">
+                                <span class="field-icon">✅</span>
+                                <span class="field-name">Payment Status</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Technical Data -->
+                    <div class="field-category">
+                        <div class="category-header">
+                            <span class="toggle-icon">▶</span>
+                            <span class="category-name">Technical Data</span>
+                            <span class="category-count">4</span>
+                        </div>
+                        <div class="category-fields">
+                            <div class="field-type" draggable="true" data-type="uuid">
+                                <span class="field-icon">🔑</span>
+                                <span class="field-name">UUID</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="ipAddress">
+                                <span class="field-icon">🌐</span>
+                                <span class="field-name">IP Address</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="url">
+                                <span class="field-icon">🔗</span>
+                                <span class="field-name">URL</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="username">
+                                <span class="field-icon">👨‍💻</span>
+                                <span class="field-name">Username</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Date & Time -->
+                    <div class="field-category">
+                        <div class="category-header">
+                            <span class="toggle-icon">▶</span>
+                            <span class="category-name">Date & Time</span>
+                            <span class="category-count">3</span>
+                        </div>
+                        <div class="category-fields">
+                            <div class="field-type" draggable="true" data-type="date">
+                                <span class="field-icon">📅</span>
+                                <span class="field-name">Date</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="datetime">
+                                <span class="field-icon">🕐</span>
+                                <span class="field-name">DateTime</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="birthdate">
+                                <span class="field-icon">🎂</span>
+                                <span class="field-name">Birthdate</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Numbers -->
+                    <div class="field-category">
+                        <div class="category-header">
+                            <span class="toggle-icon">▶</span>
+                            <span class="category-name">Numbers</span>
+                            <span class="category-count">3</span>
+                        </div>
+                        <div class="category-fields">
+                            <div class="field-type" draggable="true" data-type="integer">
+                                <span class="field-icon">🔢</span>
+                                <span class="field-name">Integer</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="decimal">
+                                <span class="field-icon">🔢</span>
+                                <span class="field-name">Decimal</span>
+                            </div>
+                            <div class="field-type" draggable="true" data-type="percentage">
+                                <span class="field-icon">📊</span>
+                                <span class="field-name">Percentage</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Panel: Schema Configuration -->
+                <div class="schema-panel">
+                    <div class="panel-header">
+                        <h3>Your Schema</h3>
+                        <div class="header-actions">
+                            <button class="btn-add-field" onclick="schemaBuilder.addCustomField()">
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                                    <path d="M6 1a1 1 0 011 1v3h3a1 1 0 110 2H7v3a1 1 0 11-2 0V7H2a1 1 0 010-2h3V2a1 1 0 011-1z"/>
+                                </svg>
+                                ADD ANOTHER FIELD
+                            </button>
+                            <button class="btn-clear" onclick="clearSchema()">Clear All</button>
+                        </div>
+                    </div>
+                    
+                    <div class="schema-table-container">
+                        <div class="schema-table-header">
+                            <div class="header-cell header-reorder"></div>
+                            <div class="header-cell">Field Name</div>
+                            <div class="header-cell">Type</div>
+                            <div class="header-cell">Options</div>
+                            <div class="header-cell header-actions">Actions</div>
+                        </div>
+                        
+                        <div id="schema-drop-zone" class="schema-drop-zone">
+                            <div class="empty-state">
+                                <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                                    <path d="M32 8L48 24H16L32 8Z" fill="var(--bg-tertiary)"/>
+                                    <rect x="16" y="24" width="32" height="32" fill="var(--bg-tertiary)"/>
+                                </svg>
+                                <p>Drag and drop fields here to build your schema</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons Bar -->
+                    <div class="action-buttons-bar">
+                        <button class="btn-action btn-preview" onclick="openPreviewModal()">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A3.995 3.995 0 0 1 8 4c2.21 0 4 1.79 4 4 0 1.04-.402 1.984-1.07 2.69l1.204 1.204A5.487 5.487 0 0 0 8 2.5zM2.5 8c0-.69.1-1.36.28-1.99l1.204 1.204A3.995 3.995 0 0 0 4 8c0 2.21 1.79 4 4 4 .69 0 1.36-.1 1.99-.28l1.204 1.204A5.487 5.487 0 0 1 2.5 8z"/>
+                                <path d="M8 5.5a2.5 2.5 0 0 0-2.5 2.5c0 .69.28 1.31.73 1.77l1.06-1.06A1.5 1.5 0 0 1 8 7.5c.83 0 1.5.67 1.5 1.5 0 .17-.03.33-.08.48l1.06-1.06c.46-.45.73-1.08.73-1.77A2.5 2.5 0 0 0 8 5.5z"/>
+                                <path d="M8 9.5c-.28 0-.5-.22-.5-.5s.22-.5.5-.5.5.22.5.5-.22.5-.5.5z"/>
+                            </svg>
+                            PREVIEW
+                        </button>
+                        <button class="btn-action btn-derive" onclick="openDeriveModal()">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM1.5 8a6.5 6.5 0 1 1 13 0 6.5 6.5 0 0 1-13 0z"/>
+                                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                            </svg>
+                            DERIVE FROM EXAMPLE...
+                        </button>
+                    </div>
+
+                    <div class="generation-config">
+                        <div class="config-row">
+                            <label for="recordCount">Number of Records:</label>
+                            <input type="number" id="recordCount" min="1" max="10000" value="100">
+                        </div>
+                        <div class="config-row">
+                            <label for="exportFormat">Export Format:</label>
+                            <select id="exportFormat">
+                                <option value="csv">CSV</option>
+                                <option value="excel">Excel (XLSX)</option>
+                                <option value="json">JSON</option>
+                                <option value="xml">XML</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" onclick="generateSimpleData()" id="generate-btn">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
+                        </svg>
+                        Generate Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Chat Tab -->
+        <div class="tab-content" id="chat-tab">
+            <div class="chat-layout">
+                <div class="chat-container">
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="message assistant">
+                            <div class="message-avatar">🤖</div>
+                            <div class="message-content">
+                                <p>Hello! I'm your AI assistant for generating synthetic data. Tell me what kind of data you need, and I'll create it for you.</p>
+                                <p class="message-hint">Example: "I need customer data with 500 records including names, emails, phone numbers, and addresses"</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="ai-input-container">
+                        <div class="input-section">
+                            <label for="topic-input">Describe your topic or enter a full prompt:</label>
+                            <div class="topic-input-container">
+                                <textarea id="topic-input" placeholder="e.g., 'flight logs' OR 'I need customer data with 500 records including names, emails, phone numbers, and addresses'" class="topic-input" rows="3"></textarea>
+                                <button class="btn-send" onclick="generateFullData()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="field-count-container">
+                                <label for="field-count"># Fields:</label>
+                                <input type="number" id="field-count" min="1" max="50" value="5" class="field-count-input" title="Number of fields in your schema">
+                            </div>
+                        </div>
+                        
+                        <div class="input-divider">
+                            <span>OR</span>
+                        </div>
+                        
+                        <div class="input-section">
+                            <label for="sample-data-input">Provide some example data:</label>
+                            <textarea id="sample-data-input" placeholder="Paste CSV, JSON, or XML here..." rows="4" class="sample-data-input"></textarea>
+                        </div>
+                        
+                        <div class="ai-action-buttons">
+                            <button class="btn-primary" onclick="generateFullData()" style="width: 100%;">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
+                                </svg>
+                                Generate Preview (10 records)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+      <div class="data-preview" id="data-preview">
+          <div class="preview-header">
+              <h3>Generated Data Preview</h3>
+              <div class="preview-actions">
+                  <button class="btn-preview" onclick="openAIPreviewModal()" id="ai-preview-btn" style="display: none;">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                          <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM1.5 8a6.5 6.5 0 1 1 13 0 6.5 6.5 0 0 1-13 0z"/>
+                          <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                      </svg>
+                      PREVIEW
+                  </button>
+              </div>
+          </div>
+          
+          <!-- AI Schema Management Buttons -->
+          <div class="schema-management" id="ai-schema-management" style="display: none;">
+              <button class="btn-add-field" onclick="addAICustomField()">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                  </svg>
+                  ADD ANOTHER FIELD
+              </button>
+              <button class="btn-clear-all" onclick="clearAISchema()">Clear All</button>
+          </div>
+          
+          <!-- Preview Tabs -->
+          <div class="preview-tabs-container" id="preview-tabs-container" style="display: none;">
+              <div class="preview-tabs" style="margin-bottom: 20px; border-bottom: 2px solid var(--border-color);">
+                  <button class="preview-tab active" data-tab="fields" onclick="switchPreviewTab('fields')">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 6px;">
+                          <path d="M3 2.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zM3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6zm0 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5z"/>
+                      </svg>
+                      Data Fields & Options
+                  </button>
+                  <button class="preview-tab" data-tab="table" onclick="switchPreviewTab('table')">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 6px;">
+                          <path d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2zm15 2h-4v3h4V4zm0 4h-4v3h4V8zm0 4h-4v3h3a1 1 0 0 0 1-1v-2zm-5 3v-3H6v3h4zm-5 0v-3H1v2a1 1 0 0 0 1 1h3zm-4-4h4V8H1v3zm0-4h4V4H1v3zm5-3v3h4V4H6zm4 4H6v3h4V8z"/>
+                      </svg>
+                      Table View
+                  </button>
+                  <button class="preview-tab" data-tab="raw" onclick="switchPreviewTab('raw')">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 6px;">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14,2 14,8 20,8"/>
+                          <line x1="16" y1="13" x2="8" y2="13"/>
+                          <line x1="16" y1="17" x2="8" y2="17"/>
+                          <polyline points="10,9 9,9 8,9"/>
+                      </svg>
+                      RAW
+                  </button>
+                  <button class="preview-tab" data-tab="sql" onclick="switchPreviewTab('sql')">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 6px;">
+                          <path d="M3 2.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zM3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6zm0 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5z"/>
+                          <path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H2zm0 1h12v12H2V2z"/>
+                          <path d="M4 4h8v1H4V4zm0 2h8v1H4V6zm0 2h8v1H4V8zm0 2h8v1H4v-1z"/>
+                      </svg>
+                      SQL
+                  </button>
+              </div>
+              
+              <!-- Fields Tab Content -->
+              <div class="preview-tab-content active" id="fields-tab-content">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                      <h3 style="margin: 0; color: var(--text-primary); font-size: 16px; font-weight: 600;">Schema Fields</h3>
+                      <button class="btn-primary" id="add-field-btn" onclick="addAICustomField()" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; font-size: 14px;">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M12 5v14M5 12h14"/>
+                          </svg>
+                          ADD ANOTHER FIELD
+                      </button>
+                  </div>
+                  <div class="preview-content" id="main-preview-content">
+                      <p class="preview-placeholder">Your generated data will appear here</p>
+                  </div>
+              </div>
+              
+              <!-- Table Tab Content -->
+              <div class="preview-tab-content" id="table-tab-content">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                      <h3 style="margin: 0; color: var(--text-primary); font-size: 16px; font-weight: 600;">Data Preview</h3>
+                      <button class="btn-primary" id="refresh-preview-btn" onclick="refreshAIPreview()" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; font-size: 14px;">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                              <path d="M21 3v5h-5"/>
+                              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                              <path d="M3 21v-5h5"/>
+                          </svg>
+                          Refresh Preview
+                      </button>
+                  </div>
+                  <div class="table-preview-content" id="table-preview-data">
+                      <p class="preview-placeholder">Switch to this tab after generating data to see table preview</p>
+                  </div>
+              </div>
+              
+              <!-- RAW Tab Content -->
+              <div class="preview-tab-content" id="raw-tab-content">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                      <h3 style="margin: 0; color: var(--text-primary); font-size: 16px; font-weight: 600;">RAW Data</h3>
+                      <button class="btn-primary" id="refresh-raw-btn" onclick="refreshAIPreview()" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; font-size: 14px;">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                              <path d="M21 3v5h-5"/>
+                              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                              <path d="M3 21v-5h5"/>
+                          </svg>
+                          Refresh Preview
+                      </button>
+                  </div>
+                  <div class="raw-preview-content" id="raw-preview-data">
+                      <p class="preview-placeholder">Switch to this tab after generating data to see raw data</p>
+                  </div>
+              </div>
+              
+              <!-- SQL Tab Content -->
+              <div class="preview-tab-content" id="sql-tab-content">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                      <h3 style="margin: 0; color: var(--text-primary); font-size: 16px; font-weight: 600;">SQL Statements</h3>
+                      <button class="btn-primary" id="refresh-sql-btn" onclick="refreshAIPreview()" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; font-size: 14px;">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                              <path d="M21 3v5h-5"/>
+                              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                              <path d="M3 21v-5h5"/>
+                          </svg>
+                          Refresh Preview
+                      </button>
+                  </div>
+                  <div class="sql-preview-content" id="sql-preview-data">
+                      <p class="preview-placeholder">Switch to this tab after generating data to see SQL statements</p>
+                  </div>
+              </div>
+          </div>
+          
+          <!-- Download Actions with Generate Full Data -->
+          <div class="download-actions" id="download-actions" style="display: none;">
+              <button class="btn-primary btn-generate-full" onclick="openGenerateFullDataModal()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 6px;">
+                      <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                  </svg>
+                  Generate Full Data
+              </button>
+              <div class="dropdown">
+                  <button class="btn-download dropdown-toggle" onclick="toggleDownloadDropdown()">
+                      📄 Download CSV ▼
+                  </button>
+                  <div class="dropdown-menu" id="csv-dropdown">
+                      <button onclick="downloadData('csv'); closeAllDropdowns()">Download as CSV</button>
+                      <button onclick="downloadData('excel'); closeAllDropdowns()">Download as Excel</button>
+                      <button onclick="downloadData('json'); closeAllDropdowns()">Download as JSON</button>
+                      <button onclick="downloadData('xml'); closeAllDropdowns()">Download as XML</button>
+                  </div>
+              </div>
+          </div>
+      </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-spinner"></div>
+            <p id="loading-text">Generating data...</p>
+        </div>
+
+            <!-- Toast Notification Container -->
+            <div id="toast-container" class="toast-container"></div>
+        </div>
+
+        <!-- Modal System -->
+        <div id="modal-overlay" class="modal-overlay" onclick="closeModal()">
+            <div class="modal" onclick="event.stopPropagation()">
+                <!-- Modal content will be dynamically inserted here -->
+            </div>
+        </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                <p>&copy; 2025 Synthetic Data Generator. Free for general public use.</p>
+            </div>
+            <div class="footer-right">
+                <p>Created by <strong>Shaziily Munawar</strong> • <a href="https://www.linkedin.com/in/shazilymunawar/" target="_blank" class="linkedin-link">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M0 1.146C0 .513.526 0 1.175 0h13.65C15.474 0 16 .513 16 1.146v13.708c0 .633-.526 1.146-1.175 1.146H1.175C.526 16 0 15.487 0 14.854V1.146zm4.943 12.248V6.169H2.542v7.225h2.401zm-1.2-8.212c.837 0 1.358-.554 1.358-1.248-.015-.709-.52-1.248-1.342-1.248-.822 0-1.359.54-1.359 1.248 0 .694.521 1.248 1.327 1.248h.016zm4.908 8.212V9.359c0-.216.016-.432.08-.586.173-.431.568-.878 1.232-.878.869 0 1.216.662 1.216 1.634v3.865h2.401V9.25c0-2.22-1.184-3.252-2.764-3.252-1.274 0-1.845.7-2.165 1.193v.025h-.016a5.54 5.54 0 0 1 .016-.025V6.169h-2.4c.03.678 0 7.225 0 7.225h2.4z"/>
+                    </svg>
+                    LinkedIn
+                </a> • <a href="changelog.html" class="changelog-link">Changelog</a> • <span class="version-text">v2.2.0</span></p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- External Libraries -->
+    <script src="sql-generator.js?v=20250122"></script>
+    <!-- Generate Full Data Modal now uses generic modal system -->
+
+    <!-- Contact Admin Modal -->
+    <div id="contact-admin-modal" class="modal" style="display: none;">
+        <div class="modal-backdrop" onclick="closeContactAdminModal()"></div>
+        <div class="modal-container" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Request Large Dataset</h2>
+                <button class="modal-close" onclick="closeContactAdminModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 20px; color: var(--text-secondary);">
+                    Need more than 1,000 records? Fill out this form and our team will get back to you.
+                </p>
+                
+                <div class="form-group">
+                    <label for="contact-email">Your Email Address *</label>
+                    <input type="email" id="contact-email" placeholder="you@example.com" class="input-field" required />
+                </div>
+                
+                <div class="form-group" style="margin-top: 16px;">
+                    <label for="contact-record-count">How many records do you need?</label>
+                    <input type="number" id="contact-record-count" min="1001" placeholder="e.g., 10000" class="input-field" />
+                </div>
+                
+                <div class="form-group" style="margin-top: 16px;">
+                    <label>Data Request Details</label>
+                    <div style="padding: 12px; background: var(--bg-secondary); border-radius: 8px; font-size: 14px;">
+                        <p style="margin: 0 0 8px 0;"><strong>Topic:</strong> <span id="request-topic"></span></p>
+                        <p style="margin: 0;"><strong>Fields:</strong> <span id="request-fields"></span></p>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-top: 16px;">
+                    <label for="contact-additional-notes">Additional Notes (Optional)</label>
+                    <textarea id="contact-additional-notes" rows="3" placeholder="Any special requirements or notes..." class="input-field"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeContactAdminModal()">Cancel</button>
+                <button class="btn-primary" onclick="submitDataRequest()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px;">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                    Submit Request
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Application Scripts -->
+    <script src="schema-builder.js?v=4"></script>
+    <script src="app.js?v=20251022221659"></script>
+    <script src="modal-functions.js?v=3"></script>
+    <script src="analytics.js?v=2"></script>
+</body>
+</html>

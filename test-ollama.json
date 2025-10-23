@@ -1,0 +1,5 @@
+{
+  "model": "llama3.2:latest",
+  "prompt": "Generate a JSON schema for customer data with 3 fields",
+  "stream": false
+}

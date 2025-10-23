@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Synthetic Data Generator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <rect width="32" height="32" rx="8" fill="#6366F1"/>
+                    <path d="M16 8L24 14L16 20L8 14L16 8Z" fill="white"/>
+                    <path d="M16 16L24 22L16 28L8 22L16 16Z" fill="white" opacity="0.6"/>
+                </svg>
+                <h1>Synthetic Data Generator</h1>
+            </div>
+            <p class="tagline">Generate complex synthetic data with AI-powered intelligence</p>
+        </header>
+
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="builder">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+                </svg>
+                Schema Builder
+            </button>
+            <button class="tab-btn" data-tab="chat">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z"/>
+                </svg>
+                AI Chat
+            </button>
+        </div>
+
+        <!-- Schema Builder Tab -->
+        <div class="tab-content active" id="builder-tab">
+            <div class="builder-layout">
+                <!-- Left Panel: Field Types -->
+                <div class="field-types-panel">
+                    <h3>Field Types</h3>
+                    <p class="panel-description">Drag fields to your schema</p>
+                    
+                    <div class="field-category">
+                        <h4>Personal Data</h4>
+                        <div class="field-type" draggable="true" data-type="firstName">
+                            <span class="field-icon">👤</span>
+                            <span>First Name</span>
+                        </div>
+                        <div class="field-type" draggable="true" data-type="lastName">
+                            <span class="field-icon">👤</span>
+                            <span>Last Name</span>
+                        </div>
+                        <div class="field-type" draggable="true" data-type="email">
+                            <span class="field-icon">📧</span>
+                            <span>Email</span>
+                        </div>
+                        <div class="field-type" draggable="true" data-type="phone">
+                            <span class="field-icon">📱</span>
+                            <span>Phone Number</span>
+                        </div>
+                        <div class="field-type" draggable="true" data-type="address">
+                            <span class="field-icon">🏠</span>
+                            <span>Address</span>
+                        </div>
+                    </div>
+
+                    <div class="field-category">
+                        <h4>Business Data</h4>
+                        <div class="field-type" draggable="true" data-type="company">
+                            <span class="field-icon">🏢</span>
+                            <span>Company</span>
+                        </div>
+                        <div class="field-type" draggable="true" data-type="jobTitle">
+                            <span class="field-icon">💼</span>
+                            <span>Job Title</span>
+                        </div>
+                        <div class="field-type" draggable="true" data-type="department">
+                            <span class="field-icon">🏛️</span>
+                            <span>Department</span>
+                        </div>
+                    </div>
+
+                    <div class="field-category">
+                        <h4>Financial Data</h4>
+                        <div class="field-type" draggable="true" data-type="creditCard">
+                            <span class="field-icon">💳</span>
+                            <span>Credit Card</span>
+                        </div>
+                        <div class="field-type" draggable="true" data-type="currency">
+                            <span class="field-icon">💰</span>
+                            <span>Currency</span>
+                        </div>
+                        <div class="field-type" draggable="true" data-type="amount">
+                            <span class="field-icon">💵</span>
+                            <span>Amount</span>
+                        </div>
+                        <div class="field-type" draggable="true" data-type="iban">
+                            <span class="field-icon">🏦</span>
+                            <span>IBAN</span>
+                        </div>
+                    </div>
+
+                    <div class="field-category">
+                        <h4>Technical Data</h4>
+                        <div class="field-type" draggable="true" data-type="uuid">
+                            <span class="field-icon">🔑</span>
+                            <span>UUID</span>
+                        </div>
+                        <div class="field-type" draggable="true" data-type="ipAddress">
+                            <span class="field-icon">🌐</span>
+                            <span>IP Address</span>
+                        </div>
+                        <div class="field-type" draggable="true" data-type="url">
+                            <span class="field-icon">🔗</span>
+                            <span>URL</span>
+                        </div>
+                        <div class="field-type" draggable="true" data-type="username">
+                            <span class="field-icon">👨‍💻</span>
+                            <span>Username</span>
+                        </div>
+                    </div>
+
+                    <div class="field-category">
+                        <h4>Date & Time</h4>
+                        <div class="field-type" draggable="true" data-type="date">
+                            <span class="field-icon">📅</span>
+                            <span>Date</span>
+                        </div>
+                        <div class="field-type" draggable="true" data-type="datetime">
+                            <span class="field-icon">🕐</span>
+                            <span>DateTime</span>
+                        </div>
+                        <div class="field-type" draggable="true" data-type="birthdate">
+                            <span class="field-icon">🎂</span>
+                            <span>Birthdate</span>
+                        </div>
+                    </div>
+
+                    <div class="field-category">
+                        <h4>Numbers</h4>
+                        <div class="field-type" draggable="true" data-type="integer">
+                            <span class="field-icon">🔢</span>
+                            <span>Integer</span>
+                        </div>
+                        <div class="field-type" draggable="true" data-type="decimal">
+                            <span class="field-icon">🔢</span>
+                            <span>Decimal</span>
+                        </div>
+                        <div class="field-type" draggable="true" data-type="percentage">
+                            <span class="field-icon">📊</span>
+                            <span>Percentage</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Panel: Schema Configuration -->
+                <div class="schema-panel">
+                    <div class="panel-header">
+                        <h3>Your Schema</h3>
+                        <button class="btn-clear" onclick="clearSchema()">Clear All</button>
+                    </div>
+                    
+                    <div id="schema-drop-zone" class="schema-drop-zone">
+                        <div class="empty-state">
+                            <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                                <path d="M32 8L48 24H16L32 8Z" fill="#E5E7EB"/>
+                                <rect x="16" y="24" width="32" height="32" fill="#E5E7EB"/>
+                            </svg>
+                            <p>Drag and drop fields here to build your schema</p>
+                        </div>
+                    </div>
+
+                    <div class="generation-config">
+                        <div class="config-row">
+                            <label for="recordCount">Number of Records:</label>
+                            <input type="number" id="recordCount" min="1" max="10000" value="100">
+                        </div>
+                        <div class="config-row">
+                            <label for="exportFormat">Export Format:</label>
+                            <select id="exportFormat">
+                                <option value="csv">CSV</option>
+                                <option value="excel">Excel (XLSX)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" onclick="generateSimpleData()" id="generate-btn">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
+                        </svg>
+                        Generate Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Chat Tab -->
+        <div class="tab-content" id="chat-tab">
+            <div class="chat-layout">
+                <div class="chat-container">
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="message assistant">
+                            <div class="message-avatar">🤖</div>
+                            <div class="message-content">
+                                <p>Hello! I'm your AI assistant for generating synthetic data. Tell me what kind of data you need, and I'll create it for you.</p>
+                                <p class="message-hint">Example: "I need customer data with 500 records including names, emails, phone numbers, and addresses"</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-container">
+                        <textarea id="chat-input" placeholder="Describe the data you need..." rows="3"></textarea>
+                        <button class="btn-send" onclick="sendChatMessage()">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
+                            </svg>
+                            Generate
+                        </button>
+                    </div>
+                </div>
+
+                <div class="data-preview" id="data-preview">
+                    <h3>Generated Data Preview</h3>
+                    <div class="preview-content" id="preview-content">
+                        <p class="preview-placeholder">Your generated data will appear here</p>
+                    </div>
+                    <div class="download-actions" id="download-actions" style="display: none;">
+                        <button class="btn-download" onclick="downloadData('csv')">
+                            📄 Download CSV
+                        </button>
+                        <button class="btn-download" onclick="downloadData('excel')">
+                            📊 Download Excel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-spinner"></div>
+            <p id="loading-text">Generating data...</p>
+        </div>
+    </div>
+
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Application Scripts -->
+    <script src="schema-builder.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,135 @@
+[
+  {
+    "user_prompt": "e-commerce orders",
+    "schema": [
+      {"name": "order_id", "type": "uuid"},
+      {"name": "customer_id", "type": "uuid"},
+      {"name": "order_date", "type": "datetime"},
+      {"name": "total_amount", "type": "decimal"},
+      {"name": "status", "type": "orderStatus"},
+      {"name": "shipping_address", "type": "address"},
+      {"name": "payment_method", "type": "paymentMethod"}
+    ],
+    "rating": "thumbs_up"
+  },
+  {
+    "user_prompt": "financial transactions",
+    "schema": [
+      {"name": "transaction_id", "type": "transactionId"},
+      {"name": "account_number", "type": "accountNumber"},
+      {"name": "amount", "type": "transactionAmount"},
+      {"name": "currency", "type": "currency"},
+      {"name": "transaction_date", "type": "datetime"},
+      {"name": "merchant", "type": "merchantName"},
+      {"name": "status", "type": "paymentStatus"}
+    ],
+    "rating": "thumbs_up"
+  },
+  {
+    "user_prompt": "employee records",
+    "schema": [
+      {"name": "employee_id", "type": "uuid"},
+      {"name": "first_name", "type": "firstName"},
+      {"name": "last_name", "type": "lastName"},
+      {"name": "email", "type": "email"},
+      {"name": "department", "type": "department"},
+      {"name": "job_title", "type": "jobTitle"},
+      {"name": "hire_date", "type": "date"},
+      {"name": "salary", "type": "decimal"}
+    ],
+    "rating": "thumbs_up"
+  },
+  {
+    "user_prompt": "product catalog",
+    "schema": [
+      {"name": "product_id", "type": "uuid"},
+      {"name": "product_name", "type": "productName"},
+      {"name": "category", "type": "category"},
+      {"name": "price", "type": "decimal"},
+      {"name": "stock_quantity", "type": "integer"},
+      {"name": "supplier", "type": "company"},
+      {"name": "last_updated", "type": "datetime"}
+    ],
+    "rating": "thumbs_up"
+  },
+  {
+    "user_prompt": "customer support tickets",
+    "schema": [
+      {"name": "ticket_id", "type": "uuid"},
+      {"name": "customer_id", "type": "uuid"},
+      {"name": "subject", "type": "ticketSubject"},
+      {"name": "priority", "type": "priority"},
+      {"name": "status", "type": "ticketStatus"},
+      {"name": "created_at", "type": "datetime"},
+      {"name": "assigned_to", "type": "email"}
+    ],
+    "rating": "thumbs_up"
+  },
+  {
+    "user_prompt": "inventory management",
+    "schema": [
+      {"name": "item_id", "type": "uuid"},
+      {"name": "item_name", "type": "productName"},
+      {"name": "warehouse_location", "type": "warehouseLocation"},
+      {"name": "quantity", "type": "integer"},
+      {"name": "reorder_level", "type": "integer"},
+      {"name": "last_restocked", "type": "datetime"},
+      {"name": "supplier", "type": "company"}
+    ],
+    "rating": "thumbs_up"
+  },
+  {
+    "user_prompt": "user authentication logs",
+    "schema": [
+      {"name": "log_id", "type": "uuid"},
+      {"name": "user_id", "type": "uuid"},
+      {"name": "username", "type": "username"},
+      {"name": "login_time", "type": "datetime"},
+      {"name": "ip_address", "type": "ipAddress"},
+      {"name": "device", "type": "userAgent"},
+      {"name": "status", "type": "loginStatus"}
+    ],
+    "rating": "thumbs_up"
+  },
+  {
+    "user_prompt": "sales data",
+    "schema": [
+      {"name": "sale_id", "type": "uuid"},
+      {"name": "product_id", "type": "uuid"},
+      {"name": "customer_id", "type": "uuid"},
+      {"name": "quantity", "type": "integer"},
+      {"name": "unit_price", "type": "decimal"},
+      {"name": "total_price", "type": "decimal"},
+      {"name": "sale_date", "type": "datetime"},
+      {"name": "payment_method", "type": "paymentMethod"}
+    ],
+    "rating": "thumbs_up"
+  },
+  {
+    "user_prompt": "marketing campaigns",
+    "schema": [
+      {"name": "campaign_id", "type": "uuid"},
+      {"name": "campaign_name", "type": "campaignName"},
+      {"name": "start_date", "type": "date"},
+      {"name": "end_date", "type": "date"},
+      {"name": "budget", "type": "decimal"},
+      {"name": "target_audience", "type": "audience"},
+      {"name": "status", "type": "campaignStatus"}
+    ],
+    "rating": "thumbs_up"
+  },
+  {
+    "user_prompt": "shipping logistics",
+    "schema": [
+      {"name": "shipment_id", "type": "uuid"},
+      {"name": "tracking_number", "type": "trackingNumber"},
+      {"name": "origin", "type": "address"},
+      {"name": "destination", "type": "address"},
+      {"name": "carrier", "type": "carrierName"},
+      {"name": "shipment_date", "type": "datetime"},
+      {"name": "delivery_status", "type": "deliveryStatus"}
+    ],
+    "rating": "thumbs_up"
+  }
+]
+

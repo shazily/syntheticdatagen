@@ -1,0 +1,133 @@
+{
+  "name": "Qdrant - Embedding Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-embedding",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "webhookId": "generate-embedding-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract schema or text to embed\nconst inputData = $input.item.json.body;\nconst schemaArray = inputData.schema || [];\n\n// Convert schema to text representation for embedding\nlet textRepresentation = '';\n\nif (Array.isArray(schemaArray) && schemaArray.length > 0) {\n  // Format: \"field_name fieldType, field_name fieldType, ...\"\n  textRepresentation = schemaArray\n    .map(field => `${field.name} ${field.type}`)\n    .join(', ');\n} else if (inputData.text) {\n  // Direct text input\n  textRepresentation = inputData.text;\n} else {\n  throw new Error('No schema or text provided for embedding generation');\n}\n\nreturn {\n  text: textRepresentation,\n  originalInput: inputData\n};"
+      },
+      "id": "prepare-text",
+      "name": "Prepare Text for Embedding",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/embeddings",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "all-minilm"
+            },
+            {
+              "name": "prompt",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "generate-embedding-ollama",
+      "name": "Generate Embedding (Ollama)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract embedding from Ollama response\nconst ollamaResponse = $input.item.json;\nconst embedding = ollamaResponse.embedding;\n\nif (!embedding || !Array.isArray(embedding)) {\n  throw new Error('Invalid embedding response from Ollama');\n}\n\nif (embedding.length !== 384) {\n  throw new Error(`Unexpected embedding dimension: ${embedding.length}, expected 384`);\n}\n\nreturn {\n  embedding: embedding,\n  dimension: embedding.length,\n  text: $('Prepare Text for Embedding').item.json.text,\n  originalInput: $('Prepare Text for Embedding').item.json.originalInput\n};"
+      },
+      "id": "extract-embedding",
+      "name": "Extract Embedding",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  success: true,\n  embedding: $json.embedding,\n  dimension: $json.dimension,\n  text: $json.text\n} }}"
+      },
+      "id": "respond-to-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Text for Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Text for Embedding": {
+      "main": [
+        [
+          {
+            "node": "Generate Embedding (Ollama)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Embedding (Ollama)": {
+      "main": [
+        [
+          {
+            "node": "Extract Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Embedding": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-13T00:00:00.000Z",
+  "versionId": "1"
+}
+

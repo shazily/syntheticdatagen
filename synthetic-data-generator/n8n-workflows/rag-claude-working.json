@@ -1,0 +1,234 @@
+{
+  "name": "RAG - Claude Working Version",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-data",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1954d083-070b-48af-81e0-e2e7df30421a",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -672,
+        -160
+      ],
+      "webhookId": "generate-data-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "user-prompt",
+              "name": "query",
+              "value": "={{ $json.body.prompt || $json.prompt }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "135b864e-ad91-440e-bdb9-f5dbf0376616",
+      "name": "Extract Query",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        -448,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "load",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "successful_schemas",
+          "mode": "name"
+        },
+        "prompt": "={{ $json.query }}",
+        "options": {}
+      },
+      "id": "b2fa88c7-3850-4ad3-9fe6-359ab98016d0",
+      "name": "Qdrant Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        -160
+      ],
+      "credentials": {
+        "qdrantApi": {
+          "id": "3GkW3v6QuMuEQfVp",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "llama3.2:latest"
+      },
+      "id": "55e7c7b6-fcb4-4ae2-9384-1950fdc17c55",
+      "name": "Embeddings Ollama",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        32
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "jmFnQptmLMNT8nwD",
+          "name": "Ollama account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the original query\nconst userQuery = $('Extract Query').first().json.query;\n\n// Get the retrieved documents from Qdrant\nconst retrievedDocs = $input.all();\n\n// Build context from retrieved schemas\nlet context = \"\";\nlet schemasFound = 0;\n\nif (retrievedDocs && retrievedDocs.length > 0) {\n  context = \"Here are relevant schema templates:\\n\\n\";\n  \n  retrievedDocs.forEach((item, index) => {\n    const json = item.json;\n    // Handle different possible data structures from vector store\n    const doc = json.document || json;\n    const content = doc.pageContent || doc.content || doc.text || doc.metadata?.description || doc.metadata?.text || json.description || '';\n    const metadata = doc.metadata || json.metadata || {};\n    const score = json.score || metadata.score || 'N/A';\n    \n    if (content) {\n      schemasFound++;\n      context += `Schema ${index + 1} (relevance: ${score}):\\n${content}\\n\\n`;\n    }\n  });\n}\n\nif (schemasFound === 0) {\n  context = \"No matching schemas found in the database. Generate data based on common patterns for this type of request.\\n\\n\";\n}\n\n// Create the full prompt for the LLM\nconst systemPrompt = \"You are a data generation assistant. Based on the provided schemas and user request, generate realistic, structured data in JSON format.\";\n\nconst fullPrompt = `${systemPrompt}\\n\\n${context}User Request: ${userQuery}\\n\\nGenerate the requested data in valid JSON format. Respond with ONLY the JSON data, no explanations or markdown formatting:`;\n\nreturn {\n  json: {\n    prompt: fullPrompt,\n    originalQuery: userQuery,\n    schemasFound: schemasFound\n  }\n};"
+      },
+      "id": "67ee4080-7d61-4a13-bbea-6f6f3d743256",
+      "name": "Build Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"model\": \"llama3.2:latest\",\n  \"prompt\": $json.prompt,\n  \"stream\": false,\n  \"options\": {\n    \"temperature\": 0.7,\n    \"num_predict\": 2000\n  }\n} }}",
+        "options": {}
+      },
+      "id": "9d6f5c0c-aa4b-44dc-9917-485e9a0f6926",
+      "name": "Generate Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the generation metadata\nconst buildContext = $('Build Context').first().json;\n\n// Extract the generated response from Ollama\nconst ollamaResponse = $input.first().json;\nconst response = ollamaResponse.response || '';\n\n// Try to parse as JSON\nlet generatedData;\nlet success = true;\nlet errorMessage = null;\n\ntry {\n  // Remove markdown code blocks if present\n  let cleanedResponse = response.trim();\n  cleanedResponse = cleanedResponse.replace(/^```json\\s*/i, '').replace(/^```\\s*/, '').replace(/```\\s*$/, '');\n  \n  // Look for JSON in the response\n  const jsonMatch = cleanedResponse.match(/\\{[\\s\\S]*\\}|\\[[\\s\\S]*\\]/);\n  \n  if (jsonMatch) {\n    generatedData = JSON.parse(jsonMatch[0]);\n  } else {\n    generatedData = { rawText: cleanedResponse };\n    success = false;\n    errorMessage = \"No valid JSON found in response\";\n  }\n} catch (error) {\n  generatedData = { rawText: response };\n  success = false;\n  errorMessage = `JSON parse error: ${error.message}`;\n}\n\nreturn {\n  json: {\n    success: success,\n    data: generatedData,\n    metadata: {\n      originalQuery: buildContext.originalQuery,\n      schemasUsed: buildContext.schemasFound,\n      timestamp: new Date().toISOString()\n    },\n    error: errorMessage\n  }\n};"
+      },
+      "id": "635a6c62-9139-43cf-99b1-6b1b4e780fc1",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "73578c71-935a-4cd7-a354-24453e97608e",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        656,
+        -160
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Query": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store": {
+      "main": [
+        [
+          {
+            "node": "Build Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Ollama": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Context": {
+      "main": [
+        [
+          {
+            "node": "Generate Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Data": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Output": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "version": 2
+}

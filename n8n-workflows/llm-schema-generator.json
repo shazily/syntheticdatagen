@@ -1,0 +1,187 @@
+{
+  "name": "LLM Schema Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-schemas",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [50, 300],
+      "webhookId": "generate-schemas-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get topics from webhook body\nconst topics = $input.item.json.body.topics || [];\n\n// Return each topic as a separate item for processing\nreturn topics.map(topic => ({\n  json: { topic: topic }\n}));"
+      },
+      "id": "split-topics",
+      "name": "Split Topics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  model: 'llama3.2',\n  prompt: `You are a data schema expert. Generate a realistic schema for: ${$json.topic}\n\nRequirements:\n- 5-8 relevant fields\n- Use realistic field names and types\n- Include common business fields (id, created_at, etc.)\n- Make it specific to the topic\n\nRespond ONLY with a JSON array of field objects:\n[{\"name\": \"field_name\", \"type\": \"field_type\"}, ...]\n\nTopic: ${$json.topic}`,\n  stream: false\n} }}",
+        "options": {}
+      },
+      "id": "generate-schema",
+      "name": "Generate Schema with LLM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse LLM response and extract JSON schema\nconst llmResponse = $input.item.json.response || '';\nconst topic = $input.item.json.topic;\n\n// Extract JSON from LLM response\nlet schema = [];\ntry {\n  // Find JSON array in the response\n  const jsonMatch = llmResponse.match(/\\[\\s*\\{[^}]*\\}[^\\]]*\\]/s);\n  if (jsonMatch) {\n    schema = JSON.parse(jsonMatch[0]);\n  }\n} catch (error) {\n  console.log('Failed to parse schema:', error);\n  // Fallback schema\n  schema = [\n    { name: 'id', type: 'uuid' },\n    { name: 'name', type: 'string' },\n    { name: 'created_at', type: 'datetime' }\n  ];\n}\n\nreturn [{\n  json: {\n    user_prompt: topic,\n    schema: schema,\n    rating: 'thumbs_up',\n    generated: true\n  }\n}];"
+      },
+      "id": "parse-schema",
+      "name": "Parse Schema",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/embeddings",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'all-minilm', prompt: $json.user_prompt } }}",
+        "options": {}
+      },
+      "id": "generate-embedding",
+      "name": "Generate Embedding",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=http://host.docker.internal:6333/collections/successful_schemas/points",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  points: [\n    {\n      id: Date.now() + Math.floor(Math.random() * 1000),\n      vector: $json.embedding,\n      payload: {\n        user_prompt: $('Parse Schema').item.json.user_prompt,\n        schema: $('Parse Schema').item.json.schema,\n        rating: 'thumbs_up',\n        timestamp: new Date().toISOString(),\n        generated: true\n      }\n    }\n  ]\n} }}",
+        "options": {}
+      },
+      "id": "insert-to-qdrant",
+      "name": "Insert to Qdrant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      success: true,\n      total_generated: $input.all().length,\n      schemas: $input.all().map(item => ({\n        topic: item.json.user_prompt,\n        fields: item.json.schema?.length || 0,\n        generated: true\n      }))\n    }\n  }\n];"
+      },
+      "id": "summary",
+      "name": "Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $('Summary').item.json }}",
+        "options": {}
+      },
+      "id": "respond-to-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Split Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Topics": {
+      "main": [
+        [
+          {
+            "node": "Generate Schema with LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Schema with LLM": {
+      "main": [
+        [
+          {
+            "node": "Parse Schema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Schema": {
+      "main": [
+        [
+          {
+            "node": "Generate Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Embedding": {
+      "main": [
+        [
+          {
+            "node": "Insert to Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert to Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1"
+}

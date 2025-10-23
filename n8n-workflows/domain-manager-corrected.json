@@ -1,0 +1,165 @@
+{
+  "name": "Domain Manager - Corrected",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "manage-domain-corrected",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "manage-domain-corrected"
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:11434/api/embeddings",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'all-minilm', prompt: $json.body.domain } }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "generate-embedding",
+      "name": "Generate Embedding",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract embedding and prepare document for Qdrant\nconst embeddingData = $input.item.json;\nconst embedding = embeddingData.embedding;\n\nif (!embedding || !Array.isArray(embedding)) {\n  throw new Error('Failed to generate embedding');\n}\n\n// Get original data from webhook\nconst originalData = $('Webhook Trigger').item.json.body;\nconst { domain, schema, action } = originalData;\n\n// Generate unique ID\nconst domainId = `domain_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;\n\n// Prepare document in the format expected by n8n Qdrant Vector Store\nconst document = {\n  pageContent: `Domain: ${domain}\\nSchema: ${JSON.stringify(schema, null, 2)}\\nAction: ${action}`,\n  metadata: {\n    domain: domain,\n    action: action,\n    timestamp: new Date().toISOString(),\n    schema_fields: schema.length,\n    user_prompt: domain,\n    schema: JSON.stringify(schema),\n    domain_id: domainId\n  }\n};\n\nreturn {\n  json: {\n    document: document,\n    embedding: embedding,\n    domainId: domainId,\n    action: action\n  }\n};"
+      },
+      "id": "prepare-document",
+      "name": "Prepare Document",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "operation": "insertDocuments",
+        "collectionName": "successful_schemas",
+        "documentLoader": {
+          "loader": "default",
+          "inputDataField": "document"
+        },
+        "options": {
+          "embedding": "={{ $json.embedding }}"
+        }
+      },
+      "id": "insert-to-qdrant",
+      "name": "Insert to Qdrant",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare success response\nconst domainId = $('Prepare Document').item.json.domainId;\nconst action = $('Prepare Document').item.json.action;\n\nreturn {\n  json: {\n    success: true,\n    message: `Domain ${action} successfully with native Qdrant node`,\n    domainId: domainId,\n    action: action,\n    timestamp: new Date().toISOString(),\n    embedding_length: $('Prepare Document').item.json.embedding.length\n  }\n};"
+      },
+      "id": "success-response",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "respond-to-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Generate Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Embedding": {
+      "main": [
+        [
+          {
+            "node": "Prepare Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Document": {
+      "main": [
+        [
+          {
+            "node": "Insert to Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert to Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2024-01-15T10:00:00.000Z",
+  "versionId": "1"
+}
