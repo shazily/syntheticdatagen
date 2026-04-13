@@ -1,13 +1,23 @@
 // Main Application Logic
 
-// Configuration - Auto-detect environment
+// Configuration - Test mode uses local Flask /api/ai-generate (no n8n). Production uses n8n.
+const urlParams = new URLSearchParams(window.location.search);
+const forceTestWorkflow = urlParams.get('test') === 'true' || urlParams.get('workflow') === 'simple-test';
+const currentPort = window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
+const currentUrl = window.location.href;
+const isTestPort = forceTestWorkflow || currentPort === '3005' || currentUrl.includes(':3005') || currentUrl.includes('localhost:3005');
 const CONFIG = {
-    n8nBaseUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-        ? 'http://localhost:5678/webhook' 
+    n8nBaseUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:5678/webhook'
         : 'https://n8n.gptlab.ae/webhook',
     simpleGeneratorWebhook: 'generate-simple',
-    intelligentGeneratorWebhook: 'generate-intelligent-v3-learn'
+    intelligentGeneratorWebhook: 'generate-intelligent-v3-learn',
+    // Test mode: call local Flask API (no n8n). Set to same origin if frontend is served by Flask.
+    useLocalAiApi: isTestPort,
+    localAiApiUrl: window.location.origin
 };
+
+// Test mode = local Flask /api/ai-generate (no n8n). Run: python app.py (default port 3005).
 
 let currentGeneratedData = null;
 let chatSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -174,22 +184,32 @@ async function sendChatMessage(message = null) {
     showLoading('AI is processing your request...');
 
     try {
-        const response = await fetch(`${CONFIG.n8nBaseUrl}/${CONFIG.intelligentGeneratorWebhook}`, {
+        const apiUrl = CONFIG.useLocalAiApi
+            ? `${CONFIG.localAiApiUrl}/api/ai-generate`
+            : `${CONFIG.n8nBaseUrl}/${CONFIG.intelligentGeneratorWebhook}`;
+        const response = await fetch(apiUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                chatInput: message,
-                sessionId: chatSessionId
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chatInput: message, sessionId: chatSessionId })
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorText = await response.text();
+            console.error('[ERROR] HTTP error:', response.status, errorText);
+            throw new Error(`HTTP error! status: ${response.status} - ${errorText.substring(0, 200)}`);
         }
 
-        const result = await response.json();
+        const responseText = await response.text();
+        if (!responseText || responseText.trim().length === 0) {
+            throw new Error(CONFIG.useLocalAiApi ? 'Empty response. Is Flask running?' : 'Empty response. Check n8n workflow.');
+        }
+
+        let result;
+        try {
+            result = JSON.parse(responseText);
+        } catch (e) {
+            throw new Error(`Invalid JSON: ${e.message}`);
+        }
         
         if (result.response) {
             // Add AI response to chat
@@ -199,8 +219,28 @@ async function sendChatMessage(message = null) {
             if (result.response.data && result.response.data.length > 0) {
                 currentGeneratedData = result.response.data;
                 
-                // Extract schema from the data (field names and infer types)
-                const schema = extractSchemaFromData(result.response.data);
+                // Use schema from response if available, otherwise infer from data
+                let schema;
+                if (result.response.schema && Array.isArray(result.response.schema) && result.response.schema.length > 0) {
+                    // Use the schema provided by the AI (parsed from response)
+                    schema = result.response.schema.map(field => {
+                        // Map AI type (e.g., "int", "varchar(50)", "decimal(10,2)") to frontend type
+                        let frontendType = mapAITypeToFrontendType(field.name, field.type);
+                        // If mapping fails, try to infer from field name and sample data
+                        if (!frontendType && result.response.data && result.response.data.length > 0) {
+                            frontendType = inferFieldType(field.name, result.response.data[0][field.name]);
+                        }
+                        return {
+                            name: field.name,
+                            type: frontendType || 'Custom'
+                        };
+                    });
+                    console.log('✅ Using schema from AI response:', schema);
+                } else {
+                    // Fallback: Extract schema from the data (field names and infer types)
+                    schema = extractSchemaFromData(result.response.data);
+                    console.log('⚠️ No schema in response, inferring from data:', schema);
+                }
                 
                 // Render the editable schema in the preview section
                 renderAIGeneratedSchema(schema);
@@ -223,7 +263,7 @@ async function sendChatMessage(message = null) {
         }
     } catch (error) {
         console.error('Error:', error);
-        addMessageToChat('assistant', `Sorry, I encountered an error: ${error.message}. Please ensure n8n is running and the workflow is configured correctly.`);
+        addMessageToChat('assistant', `Sorry, I encountered an error: ${error.message}. ${CONFIG.useLocalAiApi ? 'Ensure Flask (app.py) is running.' : 'Ensure n8n is running and the workflow is active.'}`);
         showToast('error', 'AI Error', error.message);
     } finally {
         hideLoading();
@@ -241,11 +281,58 @@ function extractSchemaFromData(data) {
     }));
 }
 
+// Map AI-generated type (e.g., "int", "varchar(50)", "decimal(10,2)") to frontend type
+function mapAITypeToFrontendType(fieldName, aiType) {
+    if (!aiType) return null;
+    
+    const typeLower = aiType.toLowerCase();
+    const nameLower = fieldName.toLowerCase();
+    
+    // Direct type mappings
+    if (typeLower.includes('int') || typeLower === 'integer') return 'Integer';
+    if (typeLower.includes('decimal') || typeLower.includes('float') || typeLower.includes('numeric') || typeLower.includes('real')) return 'Decimal';
+    if (typeLower.includes('bool') || typeLower === 'boolean') return 'Boolean';
+    if (typeLower.includes('date') && !typeLower.includes('time')) return 'Date';
+    if (typeLower.includes('datetime') || typeLower.includes('timestamp') || (typeLower.includes('date') && typeLower.includes('time'))) return 'DateTime';
+    if (typeLower.includes('time') && !typeLower.includes('date')) return 'Time';
+    if (typeLower.includes('uuid') || typeLower.includes('guid')) return 'UUID';
+    if (typeLower.includes('email')) return 'Email Address';
+    if (typeLower.includes('phone') || typeLower.includes('tel')) return 'Phone Number';
+    if (typeLower.includes('url') || typeLower.includes('uri')) return 'URL';
+    if (typeLower.includes('ip')) return 'IP Address v4';
+    if (typeLower.includes('creditcard') || typeLower.includes('card')) return 'Credit Card';
+    if (typeLower.includes('currency')) return 'Currency';
+    if (typeLower.includes('amount') || typeLower.includes('price') || typeLower.includes('cost')) return 'Amount';
+    if (typeLower.includes('percent') || typeLower.includes('percentage')) return 'Percentage';
+    
+    // Field name-based mappings for varchar/text types
+    if (typeLower.includes('varchar') || typeLower.includes('text') || typeLower.includes('string') || typeLower.includes('char')) {
+        if (nameLower.includes('first') && nameLower.includes('name')) return 'First Name';
+        if (nameLower.includes('last') && nameLower.includes('name')) return 'Last Name';
+        if (nameLower.includes('name') && !nameLower.includes('user') && !nameLower.includes('merchant')) {
+            if (nameLower.includes('customer') || nameLower.includes('cardholder')) return 'First Name';
+            return 'First Name';
+        }
+        if (nameLower.includes('email')) return 'Email Address';
+        if (nameLower.includes('phone')) return 'Phone Number';
+        if (nameLower.includes('address')) return 'Address';
+        if (nameLower.includes('company') || nameLower.includes('merchant') || nameLower.includes('store')) return 'Company';
+        if (nameLower.includes('job') || nameLower.includes('title')) return 'Job Title';
+        if (nameLower.includes('department')) return 'Department';
+        if (nameLower.includes('url') || nameLower.includes('website')) return 'URL';
+        if (nameLower.includes('transaction') && nameLower.includes('id')) return 'Transaction ID';
+        if (nameLower.includes('status') || nameLower.includes('state')) return 'Payment Status';
+        if (nameLower.includes('city') || nameLower.includes('country') || nameLower.includes('origin')) return 'Custom'; // Keep as Custom for location fields
+    }
+    
+    return null; // Let inferFieldType handle it
+}
+
 // Infer field type from field name and sample value
 function inferFieldType(fieldName, sampleValue) {
     const nameLower = fieldName.toLowerCase();
     
-    // Map common AI field names to dropdown types
+    // Map common AI field names to dropdown types (exact matches first)
     const fieldTypeMapping = {
         // Personal
         'first_name': 'First Name',
@@ -254,6 +341,8 @@ function inferFieldType(fieldName, sampleValue) {
         'lastname': 'Last Name',
         'email': 'Email Address',
         'phone': 'Phone Number',
+        'phone_number': 'Phone Number',
+        'phonenumber': 'Phone Number',
         'address': 'Address',
         'birthdate': 'Birthdate',
         'age': 'Age',
@@ -281,6 +370,8 @@ function inferFieldType(fieldName, sampleValue) {
         'invoicenumber': 'Invoice Number',
         'payment_status': 'Payment Status',
         'paymentstatus': 'Payment Status',
+        'total_cost': 'Amount',
+        'totalcost': 'Amount',
         'merchant': 'Company',
         'merchantname': 'Company',
         'merchant_name': 'Company',
@@ -292,6 +383,8 @@ function inferFieldType(fieldName, sampleValue) {
         // Technical
         'uuid': 'UUID',
         'id': 'UUID',
+        'customer_id': 'Integer',  // Customer ID is usually integer
+        'customerid': 'Integer',
         'url': 'URL',
         'username': 'Username',
         'ip_address': 'IP Address v4',
@@ -301,8 +394,10 @@ function inferFieldType(fieldName, sampleValue) {
         'date': 'Date',
         'datetime': 'DateTime',
         'timestamp': 'Timestamp',
-        'transaction_date': 'DateTime',
-        'transactiondate': 'DateTime',
+        'transaction_date': 'Date',
+        'transactiondate': 'Date',
+        'order_date': 'Date',
+        'orderdate': 'Date',
         'created_at': 'DateTime',
         'createdat': 'DateTime',
         
@@ -310,7 +405,10 @@ function inferFieldType(fieldName, sampleValue) {
         'integer': 'Integer',
         'decimal': 'Decimal',
         'percentage': 'Percentage',
-        'percent': 'Percentage'
+        'percent': 'Percentage',
+        'size': 'Integer',
+        'cap_size': 'Integer',
+        'capsize': 'Integer'
     };
     
     // Try exact match first
@@ -318,36 +416,92 @@ function inferFieldType(fieldName, sampleValue) {
         return fieldTypeMapping[nameLower];
     }
     
-    // Try partial matches
+    // Try partial matches (order matters - more specific first)
+    if (nameLower.includes('_id') || nameLower.endsWith('id')) {
+        // If it's a numeric ID (like customer_id), check sample value
+        if (typeof sampleValue === 'number' || (typeof sampleValue === 'string' && /^\d+$/.test(sampleValue))) {
+            return 'Integer';
+        }
+        // Otherwise it's likely a UUID
+        return 'UUID';
+    }
+    
     if (nameLower.includes('email')) return 'Email Address';
     if (nameLower.includes('phone')) return 'Phone Number';
     if (nameLower.includes('address')) return 'Address';
+    
+    // Name handling - check for compound names first
     if (nameLower.includes('name')) {
-        if (nameLower.includes('first')) return 'First Name';
-        if (nameLower.includes('last')) return 'Last Name';
+        if (nameLower.includes('first') || nameLower.startsWith('first')) return 'First Name';
+        if (nameLower.includes('last') || nameLower.startsWith('last')) return 'Last Name';
         if (nameLower.includes('customer') || nameLower.includes('cardholder')) return 'First Name';
         if (nameLower.includes('merchant') || nameLower.includes('company')) return 'Company';
+        // Default for "name" fields
         return 'First Name';
     }
-    if (nameLower.includes('date') || nameLower.includes('time')) return 'DateTime';
+    
+    // Location/City fields
+    if (nameLower.includes('city') || nameLower.includes('origin') || nameLower.includes('location')) {
+        return 'City';
+    }
+    
+    // Size/number fields
+    if (nameLower.includes('size') || nameLower.includes('count') || nameLower.includes('quantity')) {
+        if (typeof sampleValue === 'number' || (typeof sampleValue === 'string' && /^\d+$/.test(sampleValue))) {
+            return 'Integer';
+        }
+        return 'Custom';
+    }
+    
+    // Cost/price/amount fields
+    if (nameLower.includes('cost') || nameLower.includes('price') || nameLower.includes('total') || nameLower.includes('amount')) {
+        return 'Amount';
+    }
+    
+    // Date/Time fields
+    if (nameLower.includes('date') || nameLower.includes('time') || nameLower.includes('timestamp')) {
+        // Check if sample value looks like a date
+        if (sampleValue && (typeof sampleValue === 'string' && (
+            sampleValue.includes('-') || 
+            sampleValue.includes('/') || 
+            !isNaN(Date.parse(sampleValue))
+        ))) {
+            return sampleValue.includes('T') || sampleValue.includes(' ') ? 'DateTime' : 'Date';
+        }
+        return 'DateTime';
+    }
+    
     if (nameLower.includes('transaction') && nameLower.includes('id')) return 'Transaction ID';
     if (nameLower.includes('transaction') && (nameLower.includes('amount') || nameLower.includes('value'))) return 'Transaction Amount';
     if (nameLower.includes('transaction') && (nameLower.includes('type') || nameLower.includes('code') || nameLower.includes('method'))) return 'Payment Status';
-    if (nameLower.includes('card')) return 'Credit Card';
-    if (nameLower.includes('amount') || nameLower.includes('price') || nameLower.includes('cost')) return 'Amount';
+    if (nameLower.includes('card') && !nameLower.includes('holder')) return 'Credit Card';
     if (nameLower.includes('currency')) return 'Currency';
-    if (nameLower.includes('status')) return 'Payment Status';
-    if (nameLower.includes('id') || nameLower.includes('uuid')) return 'UUID';
+    if (nameLower.includes('status') || nameLower.includes('state')) return 'Payment Status';
     
-    // Analyze sample value
+    // Analyze sample value type
     if (typeof sampleValue === 'number') {
         return Number.isInteger(sampleValue) ? 'Integer' : 'Decimal';
     }
-    if (sampleValue instanceof Date || (typeof sampleValue === 'string' && !isNaN(Date.parse(sampleValue)) && sampleValue.includes('T'))) {
-        return 'DateTime';
-    }
     if (typeof sampleValue === 'boolean') {
         return 'Boolean';
+    }
+    if (sampleValue && typeof sampleValue === 'string') {
+        // Check for date strings
+        if (sampleValue.includes('-') && (sampleValue.includes('T') || !isNaN(Date.parse(sampleValue)))) {
+            return sampleValue.includes('T') ? 'DateTime' : 'Date';
+        }
+        // Check for email pattern
+        if (sampleValue.includes('@') && sampleValue.includes('.')) {
+            return 'Email Address';
+        }
+        // Check for phone pattern (contains digits and + or () or -)
+        if (/[\d\+\-\(\)\s]{8,}/.test(sampleValue)) {
+            return 'Phone Number';
+        }
+        // Check for UUID pattern
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sampleValue)) {
+            return 'UUID';
+        }
     }
     
     // Default fallback
@@ -1590,6 +1744,35 @@ function mapAITypeToGeneratorType(aiType) {
 }
 
 /**
+ * Maps AI/UI field types (and Schema Builder types) to Flask DataGenerator field types.
+ * Used when calling same-origin /api/generate-data so "Generate Full Data" uses the current schema.
+ */
+function mapToFlaskType(aiType, customType) {
+    if (!aiType && customType) {
+        const c = (customType + '').toLowerCase().trim();
+        if (['uuid', 'email', 'number', 'first_name', 'last_name', 'company', 'country', 'city', 'date', 'datetime', 'boolean', 'word', 'sentence', 'text', 'url'].includes(c)) return c;
+        return 'word';
+    }
+    const t = (aiType || '').toString().trim();
+    const typeMap = {
+        'First Name': 'first_name', 'Last Name': 'last_name', 'Email Address': 'email', 'Phone Number': 'phone',
+        'Address': 'address', 'Company': 'company', 'Job Title': 'job_title', 'UUID': 'uuid',
+        'Integer': 'number', 'Decimal': 'decimal', 'Boolean': 'boolean', 'Date': 'date', 'DateTime': 'datetime',
+        'Country': 'country', 'City': 'city', 'State': 'state', 'Zip Code': 'zip_code', 'URL': 'url',
+        'Website': 'url', 'Credit Card': 'credit_card', 'Currency': 'currency', 'IBAN': 'iban',
+        'IP Address v4': 'ip_address', 'IP Address v6': 'ip_address', 'IP Address': 'ip_address',
+        'MAC Address': 'mac_address', 'User Agent': 'user_agent', 'Password': 'password',
+        'Amount': 'decimal', 'Transaction Amount': 'decimal', 'Age': 'number', 'Percentage': 'decimal',
+        'Row Number': 'number', 'Latitude': 'decimal', 'Longitude': 'decimal',
+        'String': 'word', 'Number': 'number', 'Custom': 'word'
+    };
+    const lower = t.toLowerCase();
+    if (typeMap[t]) return typeMap[t];
+    if (['uuid', 'string', 'integer', 'number', 'boolean', 'email', 'company', 'country', 'city', 'date', 'datetime', 'url', 'word', 'sentence', 'text', 'address', 'phone', 'first_name', 'last_name', 'decimal'].includes(lower)) return lower;
+    return 'word';
+}
+
+/**
  * Gets the current schema state from the UI (not from old data)
  * This ensures user modifications are captured
  * @returns {Array} Array of field objects with name, type, blankPercent
@@ -1689,44 +1872,67 @@ async function confirmGenerateFullData() {
         
         console.log('📋 Schema converted to Schema Builder format:', schemaBuilderFormat);
         
-        // ✅ Call the simple generator with the user-modified schema
-        // This will use fast deterministic generation based on the user's custom schema
-        const response = await fetch(`${CONFIG.n8nBaseUrl}/${CONFIG.simpleGeneratorWebhook}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                schema: schemaBuilderFormat,
-                recordCount: recordCount,
-                exportFormat: 'csv' // Default format for AI Mode
-            })
-        });
+        // ✅ Get sampleData from currentGeneratedData (the preview data with locale patterns)
+        const sampleData = currentGeneratedData && Array.isArray(currentGeneratedData) && currentGeneratedData.length > 0
+            ? currentGeneratedData
+            : null;
         
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        console.log('📊 Sample data available:', !!sampleData, sampleData?.length || 0);
+        
+        // ✅ Prefer same-origin /api/generate-data so full data uses the CURRENT schema (no wrong category)
+        const flaskSchema = uiSchema.map(f => ({
+            name: f.name,
+            type: mapToFlaskType(f.type, f.customType)
+        }));
+        let result = null;
+        let usedFlask = false;
+        try {
+            const flaskRes = await fetch(`${window.location.origin}/api/generate-data`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    schema: flaskSchema,
+                    num_rows: recordCount,
+                    format: 'json'
+                })
+            });
+            if (flaskRes.ok) {
+                result = await flaskRes.json();
+                if (result.data && Array.isArray(result.data)) {
+                    usedFlask = true;
+                    console.log('✅ Full data generated via same-origin /api/generate-data (current schema)');
+                }
+            }
+        } catch (e) {
+            console.log('Same-origin /api/generate-data not available, using n8n simple generator:', e.message);
         }
         
-        const result = await response.json();
-        console.log('🔍 N8N Response:', result);
+        if (!usedFlask) {
+            // Fallback: n8n simple generator (may use wrong schema if it ignores request body)
+            const response = await fetch(`${CONFIG.n8nBaseUrl}/${CONFIG.simpleGeneratorWebhook}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    schema: schemaBuilderFormat,
+                    recordCount: recordCount,
+                    exportFormat: 'csv',
+                    sampleData: sampleData
+                })
+            });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            result = await response.json();
+            console.log('🔍 N8N Response:', result);
+        }
         
-        // Handle the simple generator response format: result.data
-        if (result.success && result.data) {
-            currentGeneratedData = result.data;
-            
-            // ✅ Update the preview with new data, preserving user-modified schema
+        // Handle response: Flask returns { data: array }; n8n simple returns { success, data }
+        const dataArray = result.data && Array.isArray(result.data) ? result.data : (result.success && result.data ? result.data : null);
+        if (dataArray) {
+            currentGeneratedData = dataArray;
             renderAIGeneratedSchema(uiSchema);
-            
-            // ✅ Show download buttons after data is ready
             const downloadActions = document.getElementById('download-actions');
-            if (downloadActions) {
-                downloadActions.style.display = 'flex';
-            }
-            
-            // ✅ Enable download button after generation
+            if (downloadActions) downloadActions.style.display = 'flex';
             enableDownloadButton();
-            
-            showToast('success', 'Data Generated!', `Successfully generated ${result.data.length} records using fast generation. Download is now available.`);
+            showToast('success', 'Data Generated!', `Successfully generated ${dataArray.length} records. Download is now available.`);
         } else {
             throw new Error(result.error || 'Invalid response from server');
         }

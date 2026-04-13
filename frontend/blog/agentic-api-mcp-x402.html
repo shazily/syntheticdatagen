@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QZ9NFYW2F0"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-QZ9NFYW2F0');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>From browser to agents: DataGen’s API, MCP, and pay-per-call (x402) — DataGen Blog</title>
+    <meta name="description" content="How Synthetic Data Generator (DataGen) serves humans in the UI, agents over HTTP with two generation modes, MCP tools for IDEs, and optional x402 USDC payments when no API key is present.">
+    <link rel="canonical" href="https://datagen.gptlab.ae/blog/agentic-api-mcp-x402.html">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="From browser to agents: DataGen’s API, MCP, and x402">
+    <meta property="og:description" content="Two generation modes, HTTP 402 + x402 pay-per-call, hosted MCP tools, with diagrams.">
+    <meta property="og:url" content="https://datagen.gptlab.ae/blog/agentic-api-mcp-x402.html">
+    <meta property="article:published_time" content="2026-04-12">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="DataGen: agents, API modes, MCP, x402">
+    <meta name="twitter:description" content="Two generation modes, HTTP 402 + x402, MCP tools — illustrated.">
+    <link rel="alternate" type="application/rss+xml" title="DataGen Blog" href="rss.xml">
+    <link rel="stylesheet" href="../style.css?v=20251024010454">
+    <link rel="stylesheet" href="blog.css?v=2">
+</head>
+<body class="blog-body">
+    <div class="blog-topbar">
+        <div class="blog-topbar-inner">
+            <a class="blog-brand" href="../index.html">
+                <span class="blog-brand-mark" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="M9 9h6v6H9z"/>
+                    </svg>
+                </span>
+                <span class="blog-brand-text">
+                    <strong>DataGen Blog</strong>
+                    <span>Article</span>
+                </span>
+            </a>
+            <nav class="header-actions blog-nav-links" aria-label="Blog navigation">
+                <a href="index.html" class="feedback-button-header">All posts</a>
+                <a href="../index.html" class="feedback-button-header">App</a>
+                <a href="../api-developer-info.html" class="feedback-button-header">API</a>
+                <a href="../mcp-developer-info.html" class="feedback-button-header">MCP</a>
+                <a href="../features.html" class="feedback-button-header" title="Platform features and roadmap">Features</a>
+                <a href="rss.xml" class="feedback-button-header" title="RSS feed">RSS</a>
+            </nav>
+        </div>
+    </div>
+
+    <main class="blog-article-wrap">
+        <article class="blog-article" itemscope itemtype="https://schema.org/BlogPosting">
+            <h1 itemprop="headline">From drag-and-drop to autonomous agents: how DataGen’s HTTP API, MCP, and x402 fit together</h1>
+            <p class="blog-article-meta"><span itemprop="author">DataGen</span> · Synthetic Data Generator · <time datetime="2026-04-12" itemprop="datePublished">12 April 2026</time></p>
+
+            <p>
+                <strong>Synthetic Data Generator</strong> started as a product you drive in the browser: a schema builder, AI-assisted layouts, and exports you can trust for demos, QA, and staging.
+                The next chapter is <strong>machine-native</strong>: the same quality of synthetic data, requested from code, agents, and IDEs—sometimes with <strong>no human account setup at all</strong>, thanks to HTTP <strong>402 Payment Required</strong> and the experimental <strong>x402</strong> payment flow.
+            </p>
+
+            <div class="card">
+                <p style="margin:0 0 8px 0;color:var(--text-primary,#e8eaed);"><strong>TL;DR</strong></p>
+                <ul>
+                    <li><strong>Humans</strong> keep using <a href="../index.html">the web app</a> at <strong>datagen.gptlab.ae</strong>.</li>
+                    <li><strong>Developers &amp; agents with a key</strong> call <code>/api/v1/…</code> with <code>X-API-Key</code> (free tier key: no email—see <a href="/api/v1/auth/free-key">/api/v1/auth/free-key</a>).</li>
+                    <li><strong>Keyless agents</strong> can call generation endpoints without a key, receive <strong>402</strong> + payment instructions, pay a small <strong>USDC</strong> amount on <strong>Base</strong> (exact network is deployment-configured), then retry with <code>X-PAYMENT</code>.</li>
+                    <li><strong>Two generation modes</strong>: AI mode (column names only) vs schema mode (explicit types)—same product, two contracts.</li>
+                    <li><strong>MCP</strong> exposes the same split as named tools for Cursor, Claude Desktop, and other MCP hosts (availability for organizations is described on the <a href="../mcp-developer-info.html">MCP page</a>).</li>
+                </ul>
+            </div>
+
+            <h2>OLD way vs NEW way (same product, different driver)</h2>
+            <p>
+                <strong>Human-led:</strong> you open the site, design a schema or use AI mode in the UI, preview, and download. Powerful, visual, and explicit—still the best experience when a person is in the loop.
+            </p>
+            <p>
+                <strong>Agent-led:</strong> a script or LLM orchestrates discovery, validation, and generation over HTTP—or calls MCP tools—without opening the browser. That is where <strong>capabilities</strong>, <strong>validate</strong>, <strong>two generation modes</strong>, and optionally <strong>x402</strong> matter.
+            </p>
+
+            <h2>Discovery: what “capabilities” means (not a saved-schema dump)</h2>
+            <p>
+                Agents should start with <strong><code>GET /api/v1/capabilities</code></strong>. That response is a <strong>tier-scoped manifest</strong>: which field types you may use, row limits, and other guardrails for the key (or environment) you are using.
+                It is <em>not</em> a catalog of every saved schema in your account—it is the machine-readable “rules of the road” so the agent does not propose impossible types or batch sizes.
+            </p>
+            <p>
+                For documentation depth, <strong><code>GET /api/v1/field-types</code></strong> lists the canonical type vocabulary used in schema mode.
+            </p>
+
+            <h2>Contract: validate before you spend tokens or money</h2>
+            <p>
+                <strong><code>POST /api/v1/validate</code></strong> is a <strong>dry run</strong>: send the same <code>schema_fields</code> shape you intend for <code>/generate</code>, and the API tells you whether the layout is acceptable. It is the right place to establish a <strong>data contract</strong> between agent and service before rows are materialized.
+            </p>
+
+            <h2>Two generation modes (the mental model)</h2>
+            <p>
+                We designed the API so agents can stay <strong>lazy about typing</strong> until they truly need control.
+            </p>
+
+            <div class="modes-figure" role="img" aria-label="Diagram comparing AI mode POST generate-ai versus schema mode validate then generate">
+                <svg viewBox="0 0 820 360" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <defs>
+                        <marker id="blogArrowApi" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                            <path d="M0,0 L8,4 L0,8 Z" fill="#64748b"/>
+                        </marker>
+                        <linearGradient id="blogGradAgent" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#1e3a5f;stop-opacity:1"/>
+                            <stop offset="100%" style="stop-color:#172554;stop-opacity:1"/>
+                        </linearGradient>
+                        <linearGradient id="blogGradSchema" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#1e293b;stop-opacity:1"/>
+                            <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1"/>
+                        </linearGradient>
+                    </defs>
+                    <rect width="820" height="360" fill="#0c0e12"/>
+                    <text x="410" y="28" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="system-ui, Segoe UI, sans-serif">Same deployment · same <tspan fill="#93c5fd">X-API-Key</tspan> · tier limits apply to both</text>
+                    <rect x="230" y="48" width="360" height="52" rx="10" fill="#1a1d24" stroke="#334155"/>
+                    <text x="410" y="72" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="600" font-family="system-ui, Segoe UI, sans-serif">Your client</text>
+                    <text x="410" y="90" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="system-ui, Segoe UI, sans-serif">Agent, IDE plugin, service, or CI job</text>
+                    <line x1="410" y1="100" x2="410" y2="118" stroke="#475569" stroke-width="2" marker-end="url(#blogArrowApi)"/>
+                    <line x1="200" y1="118" x2="620" y2="118" stroke="#475569" stroke-width="2"/>
+                    <line x1="200" y1="118" x2="200" y2="138" stroke="#475569" stroke-width="2" marker-end="url(#blogArrowApi)"/>
+                    <line x1="620" y1="118" x2="620" y2="138" stroke="#475569" stroke-width="2" marker-end="url(#blogArrowApi)"/>
+                    <rect x="48" y="142" width="304" height="200" rx="12" fill="url(#blogGradAgent)" stroke="#3b82f6" stroke-width="1.5"/>
+                    <text x="200" y="178" text-anchor="middle" fill="#93c5fd" font-size="12" font-weight="700" letter-spacing="0.08em" font-family="system-ui, Segoe UI, sans-serif">AI MODE · AGENT-FIRST</text>
+                    <text x="200" y="202" text-anchor="middle" fill="#cbd5e1" font-size="12" font-family="system-ui, Segoe UI, sans-serif">Payload: column names (+ optional hints)</text>
+                    <rect x="78" y="214" width="244" height="36" rx="6" fill="#0f172a" stroke="#2563eb"/>
+                    <text x="200" y="237" text-anchor="middle" fill="#f8fafc" font-size="13" font-weight="600" font-family="ui-monospace, Consolas, monospace">POST /api/v1/generate-ai</text>
+                    <text x="200" y="268" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="system-ui, Segoe UI, sans-serif">Infers canonical types · LLM + safe fallbacks</text>
+                    <text x="200" y="292" text-anchor="middle" fill="#64748b" font-size="10" font-family="system-ui, Segoe UI, sans-serif">Also: generate-ai/stream (SSE) for long runs</text>
+                    <text x="200" y="322" text-anchor="middle" fill="#86efac" font-size="11" font-family="system-ui, Segoe UI, sans-serif">Best for: chat-driven QA, prototypes, agents</text>
+                    <rect x="468" y="142" width="304" height="200" rx="12" fill="url(#blogGradSchema)" stroke="#64748b" stroke-width="1.5"/>
+                    <text x="620" y="178" text-anchor="middle" fill="#cbd5e1" font-size="12" font-weight="700" letter-spacing="0.08em" font-family="system-ui, Segoe UI, sans-serif">SCHEMA MODE · EXPLICIT</text>
+                    <text x="620" y="202" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="system-ui, Segoe UI, sans-serif">Payload: typed field definitions</text>
+                    <rect x="498" y="214" width="244" height="28" rx="6" fill="#0f172a" stroke="#475569"/>
+                    <text x="620" y="232" text-anchor="middle" fill="#e2e8f0" font-size="11" font-family="ui-monospace, Consolas, monospace">POST /api/v1/validate (recommended)</text>
+                    <text x="620" y="252" text-anchor="middle" fill="#64748b" font-size="10" font-family="system-ui, Segoe UI, sans-serif">↓</text>
+                    <rect x="498" y="258" width="244" height="36" rx="6" fill="#0f172a" stroke="#64748b"/>
+                    <text x="620" y="281" text-anchor="middle" fill="#f8fafc" font-size="13" font-weight="600" font-family="ui-monospace, Consolas, monospace">POST /api/v1/generate</text>
+                    <text x="620" y="312" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="system-ui, Segoe UI, sans-serif">Catalog types, locales, constraints</text>
+                    <text x="620" y="332" text-anchor="middle" fill="#fcd34d" font-size="11" font-family="system-ui, Segoe UI, sans-serif">Best for: CI, contracts, regulated fixtures</text>
+                </svg>
+            </div>
+
+            <div class="mode-compare">
+                <div class="mode-callout mode-callout--agent">
+                    <h3><span class="mode-badge mode-badge--agent">AI mode</span> <code>/api/v1/generate-ai</code></h3>
+                    <p>Send <code>field_names</code> plus optional <code>domain_hint</code>, <code>locale</code>, and <code>count</code>. The service infers types and fills realistic rows—ideal when the caller only knows column headers or user intent.</p>
+                </div>
+                <div class="mode-callout mode-callout--schema">
+                    <h3><span class="mode-badge mode-badge--schema">Schema mode</span> <code>/api/v1/generate</code></h3>
+                    <p>Send <code>schema_fields</code> with catalog <code>type</code> keys and optional constraints—ideal when QA, security, or compliance needs a fixed, reviewable layout.</p>
+                </div>
+            </div>
+
+            <h2>Settlement: HTTP 402 + x402 (keyless pay-per-call)</h2>
+            <p>
+                There are <strong>two legitimate ways</strong> to call generation endpoints:
+            </p>
+            <ul>
+                <li><strong>With an API key</strong> — obtain a free-tier key from <a href="/api/v1/auth/free-key"><code>/api/v1/auth/free-key</code></a> (rate-limited per client IP), then send <code>X-API-Key</code> on each call. This is the best default for humans and long-lived integrations.</li>
+                <li><strong>Without a key (agent commerce)</strong> — omit <code>X-API-Key</code> on <code>POST /api/v1/generate</code>, <code>POST /api/v1/generate-ai</code>, or <code>POST /api/v1/generate-ai/stream</code>. The API responds with <strong>HTTP 402</strong> and a JSON payload describing accepted payment methods (USDC on Base in production-style configs; test deployments may use Base Sepolia—check the <code>network</code> field your client receives).</li>
+            </ul>
+            <div class="x402-box">
+                <p style="margin-top:0;"><strong>How x402 maps to “about $0.002”</strong></p>
+                <p>
+                    The 402 body includes a <code>maxAmountRequired</code> in the smallest USDC unit (6 decimals). For smaller batches, the first pricing tier corresponds to <strong>0.002 USDC</strong> per generation request; larger <code>count</code> values move into higher tiers.
+                    After the wallet pays, the client retries the <em>same</em> HTTP request with an <strong><code>X-PAYMENT</code></strong> header carrying the settlement proof. Think of it as <strong>pay-per-delivery</strong>, not a monthly subscription.
+                </p>
+            </div>
+            <p>
+                Behind the scenes, verification uses a facilitator service (configurable per deployment). Redis may record that a payment hash was consumed so proofs are not replayed.
+            </p>
+
+            <h2>MCP: the same architecture as native tools</h2>
+            <p>
+                <strong>Model Context Protocol</strong> lets assistants and IDEs call DataGen without hand-writing curl for every task. The important idea is <strong>parity</strong>: MCP tools are thin, well-named wrappers over the same REST routes—so documentation you trust for HTTP stays true in MCP.
+            </p>
+
+            <div class="modes-figure" role="img" aria-label="Diagram of MCP tools mapping to generate-ai versus validate and generate">
+                <svg viewBox="0 0 820 360" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <defs>
+                        <marker id="blogArrowMcp" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                            <path d="M0,0 L8,4 L0,8 Z" fill="#64748b"/>
+                        </marker>
+                        <linearGradient id="blogMcpGradAgent" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#312e81;stop-opacity:1"/>
+                            <stop offset="100%" style="stop-color:#1e1b4b;stop-opacity:1"/>
+                        </linearGradient>
+                        <linearGradient id="blogMcpGradSchema" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#1e293b;stop-opacity:1"/>
+                            <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1"/>
+                        </linearGradient>
+                    </defs>
+                    <rect width="820" height="360" fill="#0c0e12"/>
+                    <text x="410" y="28" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="system-ui, Segoe UI, sans-serif">Hosted MCP <tspan fill="#c4b5fd">/mcp/sse</tspan> + same <tspan fill="#93c5fd">X-API-Key</tspan> as REST</text>
+                    <rect x="230" y="48" width="360" height="52" rx="10" fill="#1a1d24" stroke="#4c1d95"/>
+                    <text x="410" y="72" text-anchor="middle" fill="#e2e8f0" font-size="15" font-weight="600" font-family="system-ui, Segoe UI, sans-serif">MCP host (IDE, assistant, agent runner)</text>
+                    <text x="410" y="90" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="system-ui, Segoe UI, sans-serif">Selects a tool · passes JSON args · reads tool result text/JSON</text>
+                    <line x1="410" y1="100" x2="410" y2="118" stroke="#475569" stroke-width="2" marker-end="url(#blogArrowMcp)"/>
+                    <line x1="200" y1="118" x2="620" y2="118" stroke="#475569" stroke-width="2"/>
+                    <line x1="200" y1="118" x2="200" y2="138" stroke="#475569" stroke-width="2" marker-end="url(#blogArrowMcp)"/>
+                    <line x1="620" y1="118" x2="620" y2="138" stroke="#475569" stroke-width="2" marker-end="url(#blogArrowMcp)"/>
+                    <rect x="48" y="142" width="304" height="200" rx="12" fill="url(#blogMcpGradAgent)" stroke="#8b5cf6" stroke-width="1.5"/>
+                    <text x="200" y="178" text-anchor="middle" fill="#ddd6fe" font-size="12" font-weight="700" letter-spacing="0.08em" font-family="system-ui, Segoe UI, sans-serif">AGENT-FIRST TOOLS</text>
+                    <text x="200" y="202" text-anchor="middle" fill="#cbd5e1" font-size="12" font-family="system-ui, Segoe UI, sans-serif">Args: field_names (+ optional hints)</text>
+                    <rect x="78" y="214" width="244" height="32" rx="6" fill="#0f172a" stroke="#7c3aed"/>
+                    <text x="200" y="234" text-anchor="middle" fill="#e9d5ff" font-size="12" font-weight="600" font-family="ui-monospace, Consolas, monospace">datagen_generate_ai</text>
+                    <rect x="78" y="252" width="244" height="28" rx="6" fill="#0f172a" stroke="#6d28d9"/>
+                    <text x="200" y="270" text-anchor="middle" fill="#c4b5fd" font-size="11" font-family="ui-monospace, Consolas, monospace">datagen_generate_ai_stream</text>
+                    <text x="200" y="298" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="system-ui, Segoe UI, sans-serif">→ POST /api/v1/generate-ai (+ SSE variant)</text>
+                    <text x="200" y="322" text-anchor="middle" fill="#86efac" font-size="11" font-family="system-ui, Segoe UI, sans-serif">Chat: “make sample rows for these columns”</text>
+                    <rect x="468" y="142" width="304" height="200" rx="12" fill="url(#blogMcpGradSchema)" stroke="#64748b" stroke-width="1.5"/>
+                    <text x="620" y="178" text-anchor="middle" fill="#cbd5e1" font-size="12" font-weight="700" letter-spacing="0.08em" font-family="system-ui, Segoe UI, sans-serif">EXPLICIT SCHEMA TOOLS</text>
+                    <text x="620" y="202" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="system-ui, Segoe UI, sans-serif">Args: schema_fields[] with types</text>
+                    <rect x="498" y="214" width="244" height="28" rx="6" fill="#0f172a" stroke="#475569"/>
+                    <text x="620" y="232" text-anchor="middle" fill="#e2e8f0" font-size="11" font-family="ui-monospace, Consolas, monospace">datagen_validate</text>
+                    <text x="620" y="252" text-anchor="middle" fill="#64748b" font-size="10" font-family="system-ui, Segoe UI, sans-serif">↓</text>
+                    <rect x="498" y="258" width="244" height="32" rx="6" fill="#0f172a" stroke="#64748b"/>
+                    <text x="620" y="278" text-anchor="middle" fill="#f8fafc" font-size="12" font-weight="600" font-family="ui-monospace, Consolas, monospace">datagen_generate</text>
+                    <text x="620" y="308" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="system-ui, Segoe UI, sans-serif">→ POST /api/v1/validate + /generate</text>
+                    <text x="620" y="332" text-anchor="middle" fill="#fcd34d" font-size="11" font-family="system-ui, Segoe UI, sans-serif">CI-style: typed fixtures, exports, audits</text>
+                </svg>
+            </div>
+
+            <p>
+                Prefer <span class="tool-name">datagen_generate_ai</span> when the model only has column names; prefer <span class="tool-name">datagen_validate</span> followed by <span class="tool-name">datagen_generate</span> when someone hands in a strict schema or you need richer export formats.
+            </p>
+
+            <div class="notice-paid">
+                <p style="margin:0 0 8px 0;"><strong>Enterprise note</strong></p>
+                <p style="margin:0;">Hosted MCP may be offered as an organization enablement. If you are evaluating MCP for a team, read the <a href="../mcp-developer-info.html">MCP integration overview</a> and use Feedback on the home page to reach us.</p>
+            </div>
+
+            <h2>Agent-friendly errors (optional)</h2>
+            <p>
+                For clients that can self-correct, send:
+            </p>
+            <pre>Accept: application/json, application/vnd.agentic+json</pre>
+            <p>
+                on <code>validate</code>, <code>generate</code>, and AI endpoints. The API can return structured hints (message + correction guidance) instead of only opaque 4xx bodies.
+            </p>
+
+            <h2>What we built with</h2>
+            <p>
+                The public stack includes <strong>FastAPI</strong>, <strong>Pydantic v2</strong>, <strong>Ollama</strong> for AI-assisted inference where configured, <strong>Qdrant</strong> and <strong>Redis</strong> for supporting services, <strong>n8n</strong> workflows for parts of the product surface, and the experimental <strong>x402</strong> flow for keyless settlement on generation.
+            </p>
+
+            <div class="api-doc-actions">
+                <a href="https://datagen.gptlab.ae" class="btn-primary">Open DataGen</a>
+                <a href="/api/v1/docs" class="btn-secondary" style="display:inline-block;padding:10px 18px;border-radius:8px;border:1px solid var(--border,#2d333b);color:var(--text-primary,#e8eaed);">Interactive API docs</a>
+                <a href="../api-developer-info.html" class="btn-secondary" style="display:inline-block;padding:10px 18px;border-radius:8px;border:1px solid var(--border,#2d333b);color:var(--text-primary,#e8eaed);">API overview</a>
+                <a href="../mcp-developer-info.html" class="btn-secondary" style="display:inline-block;padding:10px 18px;border-radius:8px;border:1px solid var(--border,#2d333b);color:var(--text-primary,#e8eaed);">MCP overview</a>
+            </div>
+            <p class="fine-print">This article describes product behavior at a conceptual level. Always refer to <a href="/api/v1/openapi.json">OpenAPI</a> and your deployment’s live responses for authoritative paths, headers, and pricing fields.</p>
+        </article>
+
+        <div
+            id="blog-share-root"
+            class="blog-share"
+            data-share-url="https://datagen.gptlab.ae/blog/agentic-api-mcp-x402.html"
+            data-share-title="From browser to agents: DataGen’s API, MCP, and x402"
+            data-share-text="How DataGen serves humans in the UI and agents over HTTP — two API modes, MCP tools, and optional x402 pay-per-call."
+        >
+            <p class="blog-share-title">Share</p>
+            <div class="blog-share-buttons">
+                <a class="blog-share-linkedin" data-share="linkedin" href="#" rel="noopener noreferrer">LinkedIn</a>
+                <a class="blog-share-x" data-share="x" href="#" rel="noopener noreferrer">X</a>
+                <button type="button" class="blog-share-native" data-share="native" style="display:none;">Share…</button>
+                <button type="button" data-share="copy">Copy link</button>
+            </div>
+        </div>
+
+        <section class="blog-comments" aria-labelledby="comments-heading">
+            <h2 id="comments-heading" class="blog-comments-title">Comments</h2>
+            <p class="blog-comments-lead">
+                Discussion is powered by <a href="https://utteranc.es/" target="_blank" rel="noopener">Utterances</a> (GitHub sign-in).
+            </p>
+            <script
+                src="https://utteranc.es/client.js"
+                repo="shazily/syntheticdatagen"
+                issue-term="pathname"
+                theme="github-dark"
+                label="blog"
+                crossorigin="anonymous"
+                async>
+            </script>
+        </section>
+
+        <script src="blog.js?v=1" defer></script>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                <p>&copy; 2025 Synthetic Data Generator. Free for general public use.</p>
+            </div>
+            <div class="footer-right">
+                <p><a href="https://github.com/shazily/syntheticdatagen" target="_blank" rel="noopener" class="footer-legal-link">GitHub</a> • <a href="../changelog.html" class="changelog-link">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                        <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM1.5 8a6.5 6.5 0 1 1 13 0 6.5 6.5 0 0 1-13 0z"/>
+                        <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 0-1H8V3.5z"/>
+                    </svg>
+                Changelog
+            </a> • <a href="../privacy.html" class="footer-legal-link">Privacy</a> • <a href="../terms.html" class="footer-legal-link">Terms</a></p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

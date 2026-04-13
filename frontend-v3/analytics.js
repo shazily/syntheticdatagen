@@ -70,12 +70,15 @@ function openFeedbackModal() {
     const modalContent = `
         <div class="modal-header">
             <div class="modal-title-section">
-                <h2 class="modal-title">Share Your Feedback</h2>
-                <p class="modal-subtitle">Help us improve the Synthetic Data Generator</p>
+                <h2 class="modal-title">Feedback &amp; contact</h2>
+                <p class="modal-subtitle">Tell us how we’re doing—or ask how DataGen, MCP, or custom workflows could fit your organization.</p>
             </div>
             <button class="modal-close" onclick="closeModal()">×</button>
         </div>
         <div class="modal-body">
+            <div class="feedback-contact-lead">
+                <p>For a deeper conversation about enablement, integrations, or what to build next, use <strong>Feedback</strong> above or reach the maintainers via the <a href="https://github.com/shazily/syntheticdatagen" target="_blank" rel="noopener noreferrer" class="feedback-contact-linkedin">GitHub repository</a> (Issues or Discussions).</p>
+            </div>
             <form class="feedback-form" id="feedback-form">
                 <div class="feedback-section">
                     <label>How would you rate your experience?</label>
@@ -91,11 +94,11 @@ function openFeedbackModal() {
                 </div>
                 
                 <div class="feedback-section">
-                    <label for="feedback-comment">Comments or Suggestions (Optional):</label>
+                    <label for="feedback-comment">Message (optional)</label>
                     <textarea 
                         id="feedback-comment" 
                         class="feedback-textarea"
-                        placeholder="Tell us what you think, what features you'd like, or any issues you encountered..."
+                        placeholder="Feedback, bug reports, feature ideas—or a short note if you’d like follow-up about rolling this out for your organization. For a richer back-and-forth, use LinkedIn above."
                     ></textarea>
                 </div>
                 
@@ -119,7 +122,7 @@ function openFeedbackModal() {
         </div>
         <div class="modal-footer">
             <button class="btn-secondary" onclick="closeModal()">CANCEL</button>
-            <button class="btn-primary" onclick="submitFeedback()">SUBMIT FEEDBACK</button>
+            <button class="btn-primary" onclick="submitFeedback()">SUBMIT</button>
         </div>
     `;
     

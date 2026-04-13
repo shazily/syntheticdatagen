@@ -98,6 +98,9 @@ Thumbs.db
 # Docker
 .dockerignore
 
+# Qdrant persisted data (local only; do not commit)
+qdrant_storage/
+
 # Local development files
 frontend-v1/
 frontend-v2/

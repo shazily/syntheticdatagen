@@ -6,3 +6,4 @@ httpx>=0.26.0
 faker>=24.0.0
 python-multipart>=0.0.9
 starlette>=0.40.0,<0.48.0
+mcp>=1.2.0

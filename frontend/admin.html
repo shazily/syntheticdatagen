@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QZ9NFYW2F0"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-QZ9NFYW2F0');
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Analytics Dashboard</title>
@@ -74,6 +82,9 @@
             </button>
             <button class="admin-tab" data-tab="vectordb" onclick="switchAdminTab('vectordb')">
                 🧠 Vector DB
+            </button>
+            <button class="admin-tab" data-tab="api-admin" onclick="switchAdminTab('api-admin')">
+                REST API
             </button>
         </nav>
 
@@ -384,16 +395,182 @@
                     </div>
                 </div>
             </section>
+
+            <section id="tab-api-admin" class="tab-panel">
+                <div class="panel-header">
+                    <h2>REST API (internal)</h2>
+                    <p class="subtitle">Operator-only: API keys, usage, tier limits, and integration stubs. Not shown on the public generator — open via <code>/admin</code> on the same host as your nginx stack.</p>
+                </div>
+
+                <section class="metrics-overview">
+                    <div class="metric-card">
+                        <div class="metric-icon">📡</div>
+                        <div class="metric-info">
+                            <p class="metric-label">API calls today</p>
+                            <p class="metric-value" id="api-metric-calls">-</p>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">🔑</div>
+                        <div class="metric-info">
+                            <p class="metric-label">Keys issued</p>
+                            <p class="metric-value" id="api-metric-keys">-</p>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">⬆️</div>
+                        <div class="metric-info">
+                            <p class="metric-label">Upgrade candidates</p>
+                            <p class="metric-value" id="api-metric-upgrades">-</p>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">💵</div>
+                        <div class="metric-info">
+                            <p class="metric-label">USDC earned today (micro)</p>
+                            <p class="metric-value" id="api-metric-usdc">-</p>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="panel-header">
+                    <h2>API Key Management</h2>
+                    <div class="panel-actions">
+                        <button type="button" class="btn-export" onclick="exportApiKeysCsv()">Export CSV</button>
+                        <button type="button" class="btn-export" onclick="issueProKeyPlaceholder()">Issue Pro Key → clipboard</button>
+                    </div>
+                </div>
+                <div class="data-table-container">
+                    <table class="data-table" id="api-keys-table">
+                        <thead>
+                            <tr>
+                                <th>Key prefix</th>
+                                <th>Tier</th>
+                                <th>Issued</th>
+                                <th>Calls today</th>
+                                <th>Records today</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="api-keys-tbody">
+                            <tr><td colspan="7" class="loading-cell">Open this tab to load data…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="panel-header" style="margin-top: 2rem;">
+                    <h2>x402 Revenue</h2>
+                </div>
+                <section class="metrics-overview">
+                    <div class="metric-card">
+                        <div class="metric-icon">📈</div>
+                        <div class="metric-info">
+                            <p class="metric-label">USDC today (micro)</p>
+                            <p class="metric-value" id="x402-usdc-today">-</p>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">📅</div>
+                        <div class="metric-info">
+                            <p class="metric-label">USDC this week (micro)</p>
+                            <p class="metric-value" id="x402-usdc-week">-</p>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">⚡</div>
+                        <div class="metric-info">
+                            <p class="metric-label">x402 calls today</p>
+                            <p class="metric-value" id="x402-calls">-</p>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">〽️</div>
+                        <div class="metric-info">
+                            <p class="metric-label">Avg per call (micro)</p>
+                            <p class="metric-value" id="x402-avg">-</p>
+                        </div>
+                    </div>
+                </section>
+                <div class="data-table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Hash prefix</th>
+                                <th>Amount (micro)</th>
+                                <th>Timestamp</th>
+                                <th>Records</th>
+                            </tr>
+                        </thead>
+                        <tbody id="x402-settlements-tbody">
+                            <tr><td colspan="4" class="loading-cell">Stub data — wire facilitator in production</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p style="margin: 12px 0;">
+                    <a href="https://sepolia.basescan.org" target="_blank" rel="noopener">View wallet on Basescan</a>
+                </p>
+
+                <div class="panel-header" style="margin-top: 2rem;">
+                    <h2>Tier Limit Controls</h2>
+                    <p class="subtitle">NOTE: TODO — add admin auth before production</p>
+                </div>
+                <div class="insights-grid">
+                    <div class="insight-card" id="tier-panel-free">
+                        <h3>Free</h3>
+                        <div class="form-group">
+                            <label>max_records_per_call</label>
+                            <input type="number" class="form-input" id="tier-free-records" value="100" />
+                        </div>
+                        <div class="form-group">
+                            <label>max_calls_per_day</label>
+                            <input type="number" class="form-input" id="tier-free-calls" value="20" />
+                        </div>
+                        <button type="button" class="btn-primary" onclick="saveTierConfig('free')">Save</button>
+                    </div>
+                    <div class="insight-card" id="tier-panel-pro">
+                        <h3>Pro</h3>
+                        <div class="form-group">
+                            <label>max_records_per_call</label>
+                            <input type="number" class="form-input" id="tier-pro-records" value="5000" />
+                        </div>
+                        <div class="form-group">
+                            <label>max_calls_per_day</label>
+                            <input type="number" class="form-input" id="tier-pro-calls" value="500" />
+                        </div>
+                        <button type="button" class="btn-primary" onclick="saveTierConfig('pro')">Save</button>
+                    </div>
+                    <div class="insight-card" id="tier-panel-enterprise">
+                        <h3>Enterprise</h3>
+                        <div class="form-group">
+                            <label>max_records_per_call</label>
+                            <input type="number" class="form-input" id="tier-ent-records" value="100000" />
+                        </div>
+                        <div class="form-group">
+                            <label>max_calls_per_day (-1 = unlimited)</label>
+                            <input type="number" class="form-input" id="tier-ent-calls" value="-1" />
+                        </div>
+                        <button type="button" class="btn-primary" onclick="saveTierConfig('enterprise')">Save</button>
+                    </div>
+                </div>
+
+                <div class="insight-card full-width" style="margin-top: 2rem;">
+                    <h3>Stripe Placeholder</h3>
+                    <p>Payment integration pending</p>
+                    <p><strong>Webhook endpoint:</strong> <code id="stripe-webhook-url">POST /api/v1/webhooks/stripe</code></p>
+                    <button type="button" class="btn-secondary" onclick="copyStripeWebhookUrl()">Copy webhook URL</button>
+                </div>
+            </section>
         </div>
     </main>
 
     <!-- Footer -->
     <footer class="admin-footer">
-        <p>Admin Dashboard - Internal Use Only | Created by Shaziily Munawar</p>
+        <p>Admin Dashboard - Internal Use Only</p>
     </footer>
 
     <link rel="stylesheet" href="admin.css?v=3">
-    <script src="admin.js?v=18"></script>
+    <script src="admin.js?v=22"></script>
 </body>
 </html>
 

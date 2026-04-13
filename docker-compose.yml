@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # V1 - Original (Port 3004)
   web:
@@ -101,6 +99,9 @@ services:
       - OLLAMA_MODEL=llama3.2:1b
       - QDRANT_URL=http://qdrant:6333
       - REDIS_URL=redis://redis:6379
+      # Hosted MCP (HTTP/SSE) on same service as REST — nginx proxies /mcp/ → api:8000/mcp/
+      - DATAGEN_MCP_HTTP=1
+      - DATAGEN_MCP_REQUIRE_API_KEY=1
       - DATAGEN_WALLET_ADDRESS=${DATAGEN_WALLET_ADDRESS:-}
       - X402_FACILITATOR_URL=https://x402.org
       - X402_NETWORK=base-sepolia

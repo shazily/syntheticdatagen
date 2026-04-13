@@ -2,17 +2,22 @@
 name: API CI
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - "api/**"
       - "ollama_service.py"
       - "Dockerfile.api"
+      - "docker-compose.yml"
+      - "nginx.conf"
       - ".github/workflows/api-ci.yml"
   pull_request:
     paths:
       - "api/**"
       - "ollama_service.py"
       - "Dockerfile.api"
+      - "docker-compose.yml"
+      - "nginx.conf"
       - ".github/workflows/api-ci.yml"
 
 jobs:
@@ -41,3 +46,46 @@ jobs:
       - name: Verify Docker build (API image)
         working-directory: ${{ github.workspace }}
         run: docker build -f Dockerfile.api -t datagen-api:ci .
+
+  mcp-e2e:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start API stack (Docker Compose)
+        working-directory: ${{ github.workspace }}
+        run: docker compose up -d redis ollama qdrant api
+
+      - name: Wait for API health
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -e
+          for i in $(seq 1 90); do
+            if curl -sf http://127.0.0.1:18000/api/v1/health; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "--- api logs ---"
+          docker compose logs --no-color api || true
+          exit 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install MCP client deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r api/requirements.txt
+
+      - name: MCP SSE e2e (official SDK + generate)
+        working-directory: ${{ github.workspace }}
+        env:
+          MCP_SSE_URL: http://127.0.0.1:18000/mcp/sse
+          DATAGEN_API_BASE: http://127.0.0.1:18000
+          MCP_E2E_GENERATE: "1"
+        run: python api/tests/test_mcp_sse_client.py

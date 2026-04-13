@@ -395,8 +395,10 @@ function switchModalPreviewTab(tab) {
     const actualSqlView = sqlView || sqlViewById;
 
     tabButtons.forEach(btn => btn.classList.remove('active'));
-    
+    [actualTableView, actualRawView, actualSqlView].forEach(v => v.classList.remove('active'));
+
     if (tab === 'table') {
+        actualTableView.classList.add('active');
         actualTableView.style.setProperty('display', 'flex', 'important');
         actualTableView.style.visibility = 'visible';
         actualRawView.style.setProperty('display', 'none', 'important');
@@ -404,6 +406,7 @@ function switchModalPreviewTab(tab) {
         if (tabButtons[0]) tabButtons[0].classList.add('active');
         console.log('Switched to TABLE view');
     } else if (tab === 'raw') {
+        actualRawView.classList.add('active');
         actualTableView.style.setProperty('display', 'none', 'important');
         actualRawView.style.setProperty('display', 'flex', 'important');
         actualRawView.style.visibility = 'visible';
@@ -411,20 +414,16 @@ function switchModalPreviewTab(tab) {
         if (tabButtons[1]) tabButtons[1].classList.add('active');
         console.log('Switched to RAW view');
     } else if (tab === 'sql') {
-        console.log('Switching to SQL tab...');
-        console.log('SQL view element found:', !!actualSqlView);
+        actualSqlView.classList.add('active');
         actualTableView.style.setProperty('display', 'none', 'important');
         actualRawView.style.setProperty('display', 'none', 'important');
         actualSqlView.style.setProperty('display', 'flex', 'important');
         actualSqlView.style.visibility = 'visible';
         if (tabButtons[2]) tabButtons[2].classList.add('active');
         console.log('Switched to SQL view');
-        
-        // Check if SQL content exists
         const sqlContent = actualSqlView.querySelector('.sql-content');
-        console.log('SQL content element found:', !!sqlContent);
         if (sqlContent) {
-            console.log('SQL content HTML:', sqlContent.innerHTML.substring(0, 200) + '...');
+            console.log('SQL content element found');
         }
     }
     

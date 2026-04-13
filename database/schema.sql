@@ -57,6 +57,17 @@ CREATE INDEX IF NOT EXISTS idx_data_requests_email ON data_requests(email);
 CREATE INDEX IF NOT EXISTS idx_data_requests_status ON data_requests(status);
 CREATE INDEX IF NOT EXISTS idx_data_requests_created_at ON data_requests(created_at DESC);
 
+-- Feedback Table: General feedback (used by Admin API /admin/feedback and /admin/metrics)
+CREATE TABLE IF NOT EXISTS feedback (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP DEFAULT NOW(),
+    rating INTEGER,
+    comment TEXT,
+    email VARCHAR(255),
+    want_updates BOOLEAN DEFAULT FALSE
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_timestamp ON feedback(timestamp DESC);
+
 -- Comments for documentation
 COMMENT ON TABLE chat_logs IS 'Stores all A.I. Mode chat interactions for analytics and RL';
 COMMENT ON TABLE ai_ratings IS 'Stores user ratings (thumbs up/down) for AI responses';

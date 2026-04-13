@@ -1,11 +1,12 @@
 // Admin Analytics Dashboard JavaScript
 // For internal monitoring of feedback, chat logs, and AI performance
 
-// Configuration
+// Configuration: use same-origin /webhook when possible so nginx can proxy to n8n (avoids CORS)
 const ADMIN_CONFIG = {
-    n8nBaseUrl: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-        ? 'http://localhost:5678/webhook' 
+    n8nBaseUrl: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? (window.location.origin + '/webhook')  // e.g. http://localhost:3005/webhook -> nginx proxies to n8n
         : 'https://n8n.gptlab.ae/webhook',
+    apiBaseUrl: window.location.origin + '/api/v1',
     refreshInterval: 30000 // Auto-refresh every 30 seconds
 };
 
@@ -41,6 +42,9 @@ function switchAdminTab(tabName) {
     if (tabName === 'vectordb') {
         loadVectorStats();
     }
+    if (tabName === 'api-admin') {
+        loadApiAdminDashboard();
+    }
 }
 
 // Load all data from n8n webhooks
@@ -58,7 +62,8 @@ async function loadMetrics() {
         const response = await fetch(`${ADMIN_CONFIG.n8nBaseUrl}/admin/metrics`);
         if (!response.ok) throw new Error('Failed to load metrics');
         
-        const data = await response.json();
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : {};
         // Metrics returns a single object, not an array
         metricsData = data || {};
         
@@ -97,7 +102,8 @@ async function loadFeedback() {
         const response = await fetch(`${ADMIN_CONFIG.n8nBaseUrl}/admin/feedback`);
         if (!response.ok) throw new Error('Failed to load feedback');
         
-        const data = await response.json();
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : [];
         // n8n can return single object or array - handle both
         feedbackData = Array.isArray(data) ? data : (data ? [data] : []);
         console.log('Feedback data loaded:', feedbackData.length, 'records');
@@ -116,7 +122,8 @@ async function loadChatLogs() {
         const response = await fetch(`${ADMIN_CONFIG.n8nBaseUrl}/admin/chatlogs`);
         if (!response.ok) throw new Error('Failed to load chat logs');
         
-        const data = await response.json();
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : [];
         // n8n can return single object or array - handle both
         chatLogsData = Array.isArray(data) ? data : (data ? [data] : []);
         console.log('Chat logs loaded:', chatLogsData.length, 'records');
@@ -493,17 +500,19 @@ async function loadVectorStats() {
     try {
         // Get vector count from Qdrant
         const response = await fetch('http://localhost:6333/collections/successful_schemas');
-        const data = await response.json();
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : {result: {vectors_count: 0, status: 'unknown'}};
         
-        document.getElementById('vector-total').textContent = data.result.vectors_count;
-        document.getElementById('vector-status').textContent = data.result.status;
+        document.getElementById('vector-total').textContent = data.result.vectors_count || 0;
+        document.getElementById('vector-status').textContent = data.result.status || 'unknown';
         
         // Get domain count from PostgreSQL registry
         const domainsResponse = await fetch('http://localhost:5678/webhook/get-domains-registry');
-        const domainsData = await domainsResponse.json();
+        const domainsText = await domainsResponse.text();
+        const domainsData = domainsText ? JSON.parse(domainsText) : {success: false, count: 0};
         
         if (domainsData.success) {
-            document.getElementById('domain-total').textContent = domainsData.count;
+            document.getElementById('domain-total').textContent = domainsData.count || 0;
         } else {
             document.getElementById('domain-total').textContent = '0';
         }
@@ -552,7 +561,8 @@ async function loadDomains() {
             headers: { 'Content-Type': 'application/json' }
         });
         
-        const data = await response.json();
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : {domains: []};
         const domains = organizeDomainsByCategoryFromPostgres(data.domains || []);
         
         displayDomains(domains);
@@ -1277,4 +1287,98 @@ async function addDomain() {
         console.error('Error adding domain:', error);
         resultDiv.innerHTML = `<div class="result-message error">❌ Error: ${error.message}</div>`;
     }
+}
+
+// --- REST API tab (internal admin; FastAPI /api/v1 stubs) ---
+async function loadApiAdminDashboard() {
+    try {
+        const res = await fetch(`${ADMIN_CONFIG.apiBaseUrl}/admin/keys`);
+        if (!res.ok) throw new Error('admin keys');
+        const data = await res.json();
+        const s = data.summary || {};
+        document.getElementById('api-metric-calls').textContent = s.api_calls_today ?? '-';
+        document.getElementById('api-metric-keys').textContent = s.keys_issued ?? '-';
+        document.getElementById('api-metric-upgrades').textContent = s.upgrade_candidates ?? '-';
+        document.getElementById('api-metric-usdc').textContent = s.usdc_earned_today_micro ?? '-';
+
+        const tbody = document.getElementById('api-keys-tbody');
+        tbody.innerHTML = '';
+        (data.keys || []).forEach((row) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${row.prefix}</td>
+                <td>${row.tier}</td>
+                <td>${row.issued}</td>
+                <td>${row.calls_today}</td>
+                <td>${row.records_today}</td>
+                <td>${row.status}</td>
+                <td><button type="button" class="btn-secondary" onclick="alert('Revoke stub — wire Redis/registry')">Revoke</button></td>`;
+            tbody.appendChild(tr);
+        });
+
+        document.getElementById('x402-usdc-today').textContent = s.usdc_earned_today_micro ?? '0';
+        document.getElementById('x402-usdc-week').textContent = '-';
+        document.getElementById('x402-calls').textContent = '-';
+        document.getElementById('x402-avg').textContent = '-';
+
+        const st = document.getElementById('x402-settlements-tbody');
+        st.innerHTML = `<tr><td>0x402a…</td><td>5000</td><td>${new Date().toISOString()}</td><td>1000</td></tr>`;
+
+        const wh = document.getElementById('stripe-webhook-url');
+        if (wh) wh.textContent = `${window.location.origin}/api/v1/webhooks/stripe`;
+    } catch (e) {
+        console.error(e);
+        const tbody = document.getElementById('api-keys-tbody');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">Could not load API data (${e.message}). Is the api service running behind nginx?</td></tr>`;
+    }
+}
+
+function exportApiKeysCsv() {
+    const rows = [['prefix', 'tier', 'issued', 'calls_today', 'records_today', 'status']];
+    document.querySelectorAll('#api-keys-table tbody tr').forEach((tr) => {
+        const cells = Array.from(tr.querySelectorAll('td')).slice(0, 6).map((c) => c.textContent.trim());
+        if (cells.length === 6) rows.push(cells);
+    });
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'api-keys-export.csv';
+    a.click();
+}
+
+function issueProKeyPlaceholder() {
+    const k = 'DATAGEN-PRO-' + Math.random().toString(36).slice(2, 14);
+    navigator.clipboard.writeText(k).then(() => alert('Copied placeholder key: ' + k));
+}
+
+async function saveTierConfig(tier) {
+    let max_records_per_call;
+    let max_calls_per_day;
+    if (tier === 'free') {
+        max_records_per_call = parseInt(document.getElementById('tier-free-records').value, 10);
+        max_calls_per_day = parseInt(document.getElementById('tier-free-calls').value, 10);
+    } else if (tier === 'pro') {
+        max_records_per_call = parseInt(document.getElementById('tier-pro-records').value, 10);
+        max_calls_per_day = parseInt(document.getElementById('tier-pro-calls').value, 10);
+    } else {
+        max_records_per_call = parseInt(document.getElementById('tier-ent-records').value, 10);
+        max_calls_per_day = parseInt(document.getElementById('tier-ent-calls').value, 10);
+    }
+    try {
+        const res = await fetch(`${ADMIN_CONFIG.apiBaseUrl}/admin/tier-config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tier, max_records_per_call, max_calls_per_day })
+        });
+        const j = await res.json();
+        alert(j.note || 'Saved (stub)');
+    } catch (e) {
+        alert('Save failed: ' + e.message);
+    }
+}
+
+function copyStripeWebhookUrl() {
+    const url = `${window.location.origin}/api/v1/webhooks/stripe`;
+    navigator.clipboard.writeText(url).then(() => alert('Copied: ' + url));
 }

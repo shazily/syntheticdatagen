@@ -1,11 +1,21 @@
-# 🚀 Synthetic Data Generator v2.2.0
+# 🚀 Synthetic Data Generator v3.0.0
 
-![Version](https://img.shields.io/badge/version-2.2.0-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+![Version](https://img.shields.io/badge/version-3.0.0-blue)
+![License](https://img.shields.io/badge/license-GPL--3.0-green)
 ![Docker](https://img.shields.io/badge/docker-ready-blue)
 ![AI Powered](https://img.shields.io/badge/AI-powered-orange)
 
-An intelligent, web-based synthetic data generation platform featuring dual interfaces: a drag-and-drop schema builder and an AI-powered chat interface. Generate realistic test data in multiple formats with advanced features like SQL export, JSON/XML support, and vector database integration.
+**Live:** [datagen.gptlab.ae](https://datagen.gptlab.ae/) · **Repository:** [github.com/shazily/syntheticdatagen](https://github.com/shazily/syntheticdatagen)
+
+📋 **Too many files?** See **[WORKING_FILES.md](WORKING_FILES.md)** for a list of what’s essential (core app, docs, and what’s safe to archive).
+
+An intelligent synthetic data platform: **Schema Builder** and **AI Mode** in the browser, plus a versioned **HTTP API** (`/api/v1`) and **Model Context Protocol (MCP)** server for agents, scripts, and IDEs. Export CSV, Excel, JSON, XML, or SQL; optional **Qdrant** RAG and **n8n** workflows power the chat experience.
+
+## 🔌 Agentic API & MCP (v3)
+
+- **REST API** — FastAPI service (`api/`, Docker `api` service, default host port **18000** in `docker-compose.yml`). OpenAPI at `/api/v1/openapi.json`, interactive docs at `/api/v1/docs`. Supports capabilities, field-type catalog, validate, generate (explicit schema), generate-ai (column names), optional SSE streaming, API keys (including free tier), idempotency, structured agent errors, and optional **x402** flows where configured.
+- **MCP** — `datagen_mcp_app.py` exposes tools, resources, and prompts; **stdio** connector under `mcp_datagen/`. HTTP/SSE is mounted on the API process (e.g. `/mcp` behind nginx). See `frontend/api-developer-info.html` and `frontend/mcp-developer-info.html` in the static site for human-readable overviews.
+- **Do not commit** local vector data: `qdrant_storage/` is listed in `.gitignore`; keep secrets in `.env` (see `env.example`), never in the repo.
 
 ## ✨ Key Features
 
@@ -40,42 +50,18 @@ An intelligent, web-based synthetic data generation platform featuring dual inte
 ## 🏗️ Architecture
 
 ```
-┌─────────────┐      ┌──────────┐      ┌─────────┐      ┌──────────────┐
-│   Frontend  │─────▶│   n8n    │─────▶│ Ollama  │─────▶│ Generated    │
-│  (Nginx)    │      │ Webhooks │      │   LLM   │      │ Data (Multi) │
-└─────────────┘      └──────────┘      └─────────┘      └──────────────┘
-       │                    │
-       │                    ▼
-       │              ┌─────────┐
-       │              │ Qdrant  │
-       │              │ Vector  │
-       └─────────────▶│   DB    │
-                      └─────────┘
+┌─────────────┐   ┌──────────────┐      ┌──────────┐      ┌─────────┐      ┌──────────────┐
+│   Frontend  │   │ FastAPI    │      │   n8n    │─────▶│ Ollama  │─────▶│ Generated    │
+│  (Nginx)    │──▶│ /api/v1+MCP │      │ Webhooks │      │   LLM   │      │ Data (Multi) │
+└─────────────┘   └──────────────┘      └──────────┘      └─────────┘      └──────────────┘
+       │                  │                  │
+       │                  │                  ▼
+       │                  │            ┌─────────┐
+       │                  └───────────▶│ Qdrant  │
+       │                                │ Vector  │
+       └────────────────────────────────│   DB    │
+                                        └─────────┘
 ```
-
-## 🎯 Key Features
-
-### 🤖 **AI-Powered Generation**
-- Natural language processing with Ollama LLM
-- Intelligent schema interpretation and creation
-- RAG system for continuous learning
-
-### 🎯 **Drag & Drop Builder**
-- Visual schema builder with 30+ field types
-- Real-time preview and modification
-- Custom field type definitions
-
-### 📊 **Multiple Export Formats**
-- **CSV** - Comma-separated values
-- **Excel** - XLSX format with formatting
-- **JSON** - Structured data format
-- **XML** - Extensible markup language
-- **SQL** - CREATE TABLE and INSERT statements
-
-### 🗄️ **SQL Query Generation**
-- Automatic CREATE TABLE statements
-- INSERT statements with proper escaping
-- Database-ready SQL output
 
 ## 🚀 Quick Start
 
@@ -89,20 +75,20 @@ An intelligent, web-based synthetic data generation platform featuring dual inte
 
 #### Step 1: Clone and Start
 ```bash
-git clone https://github.com/yourusername/synthetic-data-generator.git
-cd synthetic-data-generator
-docker-compose up -d
+git clone https://github.com/shazily/syntheticdatagen.git
+cd syntheticdatagen
+docker compose up -d
 ```
 
-The application will be available at: **http://localhost**
+The UI is served on **http://localhost:3004** and **http://localhost:3005** (same `frontend/` bundle). **http://localhost:3006** serves `frontend-v3/`. The **API** listens on **http://localhost:18000** (see `docker-compose.yml` host port mapping). Qdrant and Redis use published ports in the compose file for local development.
 
 #### Step 2: Import n8n Workflows
 1. Open n8n: http://localhost:5678
 2. Import essential workflows from `n8n-workflows/`:
-   - `intelligent-generator-v3-dev-RAG-ENHANCED.json` (AI Mode)
-   - `simple-generator.json` (Schema Builder)
-   - `qdrant-schema-indexer.json` (RAG System)
-   - `schema-seeder.json` (Database Seeding)
+   - **`simple-generator-user-updated.json`** – Schema Builder + AI “Generate Full Data” (single workflow for both)
+   - **`intelligent-generator-v3-rag-fixed-user.json`** or `intelligent-generator-v3-dev-RAG-ENHANCED.json` – AI Mode (schema + preview)
+   - `qdrant-schema-indexer.json` (RAG)
+   - `schema-seeder.json` (optional, database seeding)
 3. **Activate all workflows** (toggle switch)
 
 #### Step 3: Configure AI Integration
@@ -291,26 +277,26 @@ curl -X POST http://localhost:5678/webhook/generate-intelligent \
 
 ## 📁 Project Structure
 
+See **[WORKING_FILES.md](WORKING_FILES.md)** for a list of core vs optional vs legacy files.
+
+**Core (required for the app):**
 ```
-synthetic-data-generator/
-├── frontend/                    # Production frontend
-│   ├── index.html              # Main application
-│   ├── app.js                  # Core application logic
-│   ├── style.css               # Styling
-│   ├── schema-builder.js       # Drag-drop functionality
-│   ├── modal-functions.js      # Modal interactions
-│   ├── sql-generator.js        # SQL generation
-│   └── changelog.html          # Version history
-├── frontend-v3/                # Development frontend
-├── n8n-workflows/              # n8n workflow definitions
-│   ├── intelligent-generator-v3-dev-RAG-ENHANCED.json
-│   └── simple-generator.json
-├── database/                   # Database schemas
-├── qdrant_storage/             # Vector database storage
-├── docker-compose.yml          # Docker configuration
-├── Dockerfile                  # Container build
-├── nginx.conf                  # Web server config
-└── README.md                   # This file
+├── frontend/                    # Production static UI (ports 3004, 3005)
+│   ├── index.html, app.js, style.css, changelog.html, features.html
+│   ├── api-developer-info.html, mcp-developer-info.html, blog/
+│   ├── schema-builder.js, modal-functions.js, sql-generator.js, analytics.js
+│   ├── admin.html, admin.js, admin.css, domain-management.js
+├── frontend-v3/                 # Alternate UI (port 3006)
+├── api/                         # FastAPI Agentic API + MCP mount (Dockerfile.api)
+├── mcp_datagen/                 # stdio MCP connector (env: DATAGEN_API_BASE, DATAGEN_API_KEY)
+├── n8n-workflows/               # Import into n8n
+│   ├── simple-generator-user-updated.json   # Schema Builder + AI full data
+│   ├── intelligent-generator-v3-rag-fixed-user.json  # AI Mode (examples)
+│   ├── qdrant-schema-indexer.json, schema-seeder.json (optional)
+├── database/schema.sql
+├── docker-compose.yml, Dockerfile, Dockerfile.api, nginx.conf
+├── app.py, requirements.txt, env.example   # Legacy Flask surface (optional)
+└── docs/                        # changelog.md, index.md
 ```
 
 ## 🚀 Deployment
@@ -337,6 +323,16 @@ docker-compose restart
 ```
 
 ## 🔄 Version History
+
+### v3.0.0 (April 12, 2026) — Major
+- **Agentic REST API** — `/api/v1` FastAPI surface with OpenAPI, validate, generate, generate-ai, SSE, keys, idempotency (Redis), structured errors, x402 path.
+- **MCP** — FastMCP tools/resources/prompts; stdio and HTTP/SSE.
+- **Site** — Features page and nav updates; feedback/contact modal; changelog alignment.
+
+### v2.3.0 (January 25, 2026)
+- 🔧 **AI Generate Full Data** – Uses current schema and patterns; n8n simple generator reads request body correctly (root or `.body`).
+- 🔧 **Schema Builder preview** – TABLE / RAW / SQL tabs in the preview modal now switch correctly.
+- ✨ **Simple generator workflow** – `simple-generator-user-updated.json` serves both Schema Builder and AI Mode; supports `schema`, `sampleData`, `fieldPatterns`.
 
 ### v2.2.0 (October 23, 2025)
 - ✨ **JSON & XML Export** - Added comprehensive export formats
@@ -377,14 +373,13 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## 📄 License
 
-MIT License - See [LICENSE](LICENSE) file for details.
+GPL-3.0 - See [LICENSE](LICENSE) file for details.
 
 ## 🆘 Support
 
-- **Documentation**: Check this README and `DEVELOPER_NOTES.md`
-- **Issues**: Report bugs via GitHub Issues
-- **Discussions**: Use GitHub Discussions for questions
-- **Email**: Contact the maintainer for enterprise support
+- **Documentation**: This README, `docs/`, and `DEVELOPER_NOTES.md` (if present)
+- **Issues**: [GitHub Issues](https://github.com/shazily/syntheticdatagen/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/shazily/syntheticdatagen/discussions)
 
 ## 🙏 Acknowledgments
 
@@ -398,4 +393,4 @@ MIT License - See [LICENSE](LICENSE) file for details.
 
 **Built with ❤️ using n8n, Ollama, Qdrant, Docker, and modern web technologies**
 
-**Last Updated:** October 23, 2025
+**Last Updated:** April 12, 2026

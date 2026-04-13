@@ -58,8 +58,8 @@
       "position": [400, 200],
       "credentials": {
         "postgres": {
-          "id": "1",
-          "name": "Postgres - Feedback DB"
+          "id": "Qj2oredMBiLhvTqE",
+          "name": "Postgres account"
         }
       }
     },
@@ -90,8 +90,8 @@
       "position": [400, 400],
       "credentials": {
         "postgres": {
-          "id": "1",
-          "name": "Postgres - Feedback DB"
+          "id": "Qj2oredMBiLhvTqE",
+          "name": "Postgres account"
         }
       }
     },
@@ -120,15 +120,15 @@
       "position": [400, 600],
       "credentials": {
         "postgres": {
-          "id": "1",
-          "name": "Postgres - Feedback DB"
+          "id": "Qj2oredMBiLhvTqE",
+          "name": "Postgres account"
         }
       }
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ $json.data }}"
+        "responseBody": "={{ $json.data != null ? $json.data : [] }}"
       },
       "id": "respond-feedback",
       "name": "Respond Feedback",
@@ -139,7 +139,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ $json.data }}"
+        "responseBody": "={{ $json.data != null ? $json.data : [] }}"
       },
       "id": "respond-chatlogs",
       "name": "Respond Chat Logs",
@@ -150,7 +150,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ $json }}"
+        "responseBody": "={{ $json != null ? $json : {} }}"
       },
       "id": "respond-metrics",
       "name": "Respond Metrics",

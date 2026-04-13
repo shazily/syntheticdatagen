@@ -11,6 +11,8 @@ const CONFIG = {
 
 let currentGeneratedData = null;
 let chatSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+let fieldPatterns = {}; // CRITICAL: Store locale patterns from AI preview
+let hasPatterns = false; // Track if patterns were extracted
 
 // ===============================
 // Schema State Management (AI Mode)
@@ -190,20 +192,70 @@ async function sendChatMessage(message = null) {
         }
 
         const result = await response.json();
+        console.log('🔍 FULL API RESPONSE:', JSON.stringify(result, null, 2));
         
         if (result.response) {
             // Add AI response to chat
             addMessageToChat('assistant', result.response.message || 'Data generated successfully!');
             
+            // DEBUG: Log full response to understand what we're receiving
+            console.log('🔍 Full API Response Structure:', {
+                hasResponse: !!result.response,
+                hasData: !!result.response.data,
+                dataType: Array.isArray(result.response.data) ? 'array' : typeof result.response.data,
+                dataLength: Array.isArray(result.response.data) ? result.response.data.length : 'N/A',
+                hasSchema: !!result.response.schema,
+                schemaLength: Array.isArray(result.response.schema) ? result.response.schema.length : 'N/A',
+                fieldPatterns: !!result.response.fieldPatterns,
+                fieldPatternsKeys: result.response.fieldPatterns ? Object.keys(result.response.fieldPatterns) : []
+            });
+            
             // If data was generated, display it in table format
-            if (result.response.data && result.response.data.length > 0) {
+            // CRITICAL: Check if data exists, even if empty array (might be a timing issue)
+            if (result.response.data && Array.isArray(result.response.data) && result.response.data.length > 0) {
+                // CRITICAL: Set data FIRST before any UI updates
+                console.log('🔍 Setting currentGeneratedData from result.response.data');
+                console.log('🔍 Data length:', result.response.data.length);
+                console.log('🔍 First record keys:', Object.keys(result.response.data[0] || {}));
+                console.log('🔍 First record:', result.response.data[0]);
                 currentGeneratedData = result.response.data;
+                console.log('✅ AI Preview Data Set:', currentGeneratedData.length, 'records');
+                console.log('✅ First record:', currentGeneratedData[0]);
+                
+                // CRITICAL: Store fieldPatterns from AI preview for locale-aware full generation
+                if (result.response.fieldPatterns) {
+                    fieldPatterns = result.response.fieldPatterns;
+                    hasPatterns = result.response.hasPatterns || Object.keys(fieldPatterns).length > 0;
+                    console.log('✅ Locale patterns extracted:', Object.keys(fieldPatterns).length, 'fields');
+                    Object.entries(fieldPatterns).forEach(([field, values]) => {
+                        console.log(`  📌 ${field}: ${values.slice(0, 3).join(', ')}${values.length > 3 ? '...' : ''}`);
+                    });
+                    
+                    if (hasPatterns) {
+                        showToast('success', 'Locale Patterns Detected', `AI extracted patterns for ${Object.keys(fieldPatterns).length} fields. Full generation will use these patterns.`);
+                    }
+                } else {
+                    fieldPatterns = {};
+                    hasPatterns = false;
+                    console.warn('⚠️ No fieldPatterns in AI response');
+                }
                 
                 // Extract schema from the data (field names and infer types)
                 const schema = extractSchemaFromData(result.response.data);
                 
                 // Render the editable schema in the preview section
                 renderAIGeneratedSchema(schema);
+                
+                // CRITICAL: Switch to table tab AFTER data is set and schema is rendered
+                setTimeout(() => {
+                    // Force update table view with fresh data
+                    if (typeof updateTableView === 'function') {
+                        updateTableView();
+                    }
+                    if (typeof switchAIPreviewTab === 'function') {
+                        switchAIPreviewTab('table');
+                    }
+                }, 200);
                 
                 // Show download buttons
                 const downloadActions = document.getElementById('download-actions');
@@ -217,8 +269,25 @@ async function sendChatMessage(message = null) {
                 
                 // Show rating widget for user feedback (RL data collection)
                 showRatingWidget();
+            } else {
+                console.error('❌ NO DATA IN RESPONSE!');
+                console.error('result.response.data:', result.response.data);
+                console.error('result.response:', result.response);
+                
+                // Check if we have schema but no data - this means Response Parser failed
+                if (result.response.schema && Array.isArray(result.response.schema) && result.response.schema.length > 0) {
+                    console.warn('⚠️ Schema exists but no data - Response Parser may have failed to extract sampleData');
+                    showToast('error', 'Data Extraction Failed', 'The AI generated a schema but the Response Parser failed to extract sample data. Please check the n8n logs and try again.');
+                } else if (result.response.schema && Array.isArray(result.response.schema) && result.response.schema.length === 0) {
+                    console.warn('⚠️ Empty schema and empty data - Response Parser may have failed completely');
+                    showToast('error', 'Parsing Failed', 'The Response Parser returned empty results. Please check the n8n workflow logs and ensure the Response Parser node is correctly configured.');
+                } else {
+                    showToast('warning', 'No Data', 'AI generated a schema but no sample data was returned. Please try again.');
+                }
             }
         } else {
+            console.error('❌ NO result.response!');
+            console.error('Full result:', result);
             throw new Error('Invalid response from AI');
         }
     } catch (error) {
@@ -1689,18 +1758,38 @@ async function confirmGenerateFullData() {
         
         console.log('📋 Schema converted to Schema Builder format:', schemaBuilderFormat);
         
-        // ✅ Call the simple generator with the user-modified schema
-        // This will use fast deterministic generation based on the user's custom schema
+        // ✅ CRITICAL: Prepare request body with fieldPatterns for locale-aware generation
+        const requestBody = {
+            schema: schemaBuilderFormat,
+            recordCount: recordCount,
+            exportFormat: 'csv' // Default format for AI Mode
+        };
+        
+        // CRITICAL: Pass fieldPatterns if available (from AI preview)
+        if (hasPatterns && fieldPatterns && Object.keys(fieldPatterns).length > 0) {
+            requestBody.fieldPatterns = fieldPatterns;
+            console.log('✅ Passing fieldPatterns to Simple Generator:', Object.keys(fieldPatterns));
+            Object.entries(fieldPatterns).forEach(([field, values]) => {
+                console.log(`  📌 ${field}: ${values.length} unique values`);
+            });
+        } else {
+            console.log('ℹ️ No fieldPatterns available, using type-based generators');
+        }
+        
+        // When fieldPatterns is missing, pass sampleData so simple generator can extract patterns
+        if (currentGeneratedData && Array.isArray(currentGeneratedData) && currentGeneratedData.length > 0) {
+            requestBody.sampleData = currentGeneratedData;
+            console.log('✅ Passing sampleData to Simple Generator for pattern extraction:', currentGeneratedData.length, 'records');
+        }
+        
+        // ✅ Call the simple generator with the user-modified schema and patterns
+        // This will use fast deterministic generation with locale-aware patterns
         const response = await fetch(`${CONFIG.n8nBaseUrl}/${CONFIG.simpleGeneratorWebhook}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                schema: schemaBuilderFormat,
-                recordCount: recordCount,
-                exportFormat: 'csv' // Default format for AI Mode
-            })
+            body: JSON.stringify(requestBody)
         });
         
         if (!response.ok) {

@@ -718,7 +718,30 @@ async def stripe_webhook() -> dict:
 
 @app.get("/")
 async def root() -> dict:
-    return {"service": "datagen-api", "docs": "/api/v1/docs"}
+    return {
+        "service": "datagen-api",
+        "docs": "/api/v1/docs",
+        "mcp": "/mcp/sse",
+        "mcp_note": "MCP over HTTP/SSE when DATAGEN_MCP_HTTP is enabled; send X-API-Key on MCP requests.",
+    }
+
+
+def _mount_mcp_http() -> None:
+    """Expose Model Context Protocol (SSE) on the same origin as the REST API."""
+    if os.getenv("DATAGEN_MCP_HTTP", "1").lower() not in ("1", "true", "yes", "on"):
+        return
+    try:
+        from datagen_mcp_app import build_mcp_http_app
+        from mcp_http_auth import MCPHttpAuthASGI
+
+        app.mount("/mcp", MCPHttpAuthASGI(build_mcp_http_app()))
+    except Exception as exc:  # pragma: no cover
+        import logging
+
+        logging.getLogger("uvicorn.error").warning("MCP HTTP/SSE mount skipped: %s", exc)
+
+
+_mount_mcp_http()
 
 
 def custom_openapi() -> dict:

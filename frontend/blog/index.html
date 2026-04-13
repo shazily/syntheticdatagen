@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<!--
+  Adding a new post:
+  1. Create frontend/blog/<slug>.html (copy an existing post; update og/twitter meta, canonical, title).
+  2. Add a card below in .blog-card-grid (same slug in href).
+  3. Add an <item> to rss.xml.
+  4. Optional: bump "lastBuildDate" in rss.xml.
+-->
+<html lang="en">
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QZ9NFYW2F0"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-QZ9NFYW2F0');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog — Synthetic Data Generator · DataGen</title>
+    <meta name="description" content="Build notes, API & MCP deep-dives, and agentic payments (x402) from the Synthetic Data Generator team.">
+    <link rel="canonical" href="https://datagen.gptlab.ae/blog/">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="DataGen Blog — Synthetic Data Generator">
+    <meta property="og:description" content="Ship logs, API design, MCP, x402, and synthetic data for agents.">
+    <meta property="og:url" content="https://datagen.gptlab.ae/blog/">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="DataGen Blog">
+    <meta name="twitter:description" content="Ship logs, API design, MCP, x402, and synthetic data for agents.">
+    <link rel="alternate" type="application/rss+xml" title="DataGen Blog" href="rss.xml">
+    <link rel="stylesheet" href="../style.css?v=20251024010454">
+    <link rel="stylesheet" href="blog.css?v=2">
+</head>
+<body class="blog-body">
+    <div class="blog-topbar">
+        <div class="blog-topbar-inner">
+            <a class="blog-brand" href="../index.html">
+                <span class="blog-brand-mark" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="M9 9h6v6H9z"/>
+                    </svg>
+                </span>
+                <span class="blog-brand-text">
+                    <strong>DataGen Blog</strong>
+                    <span>Synthetic Data Generator</span>
+                </span>
+            </a>
+            <nav class="header-actions blog-nav-links" aria-label="Blog navigation">
+                <a href="index.html" class="feedback-button-header blog-nav-active">All posts</a>
+                <a href="../index.html" class="feedback-button-header">App</a>
+                <a href="../api-developer-info.html" class="feedback-button-header">API</a>
+                <a href="../mcp-developer-info.html" class="feedback-button-header">MCP</a>
+                <a href="../features.html" class="feedback-button-header" title="Platform features and roadmap">Features</a>
+                <a href="rss.xml" class="feedback-button-header" title="RSS feed">RSS</a>
+            </nav>
+        </div>
+    </div>
+
+    <header class="blog-hero">
+        <h1>Build in public</h1>
+        <p class="blog-hero-lead">
+            Product notes, integration guides, and architecture write-ups for anyone shipping <strong>synthetic data</strong>,
+            <strong>agent-native APIs</strong>, and <strong>MCP</strong> tools. Share posts on LinkedIn or X with one click.
+        </p>
+        <div class="blog-hero-cta">
+            <a href="../index.html" class="btn-primary">Try DataGen</a>
+            <a href="/api/v1/docs" class="btn-secondary" style="display:inline-block;padding:10px 20px;border-radius:8px;border:1px solid var(--border,#2d333b);color:var(--text-primary,#e8eaed);">API reference</a>
+        </div>
+    </header>
+
+    <main class="blog-index-main">
+        <p class="blog-section-title">Latest</p>
+        <div class="blog-card-grid">
+            <a class="blog-card" href="agentic-api-mcp-x402.html">
+                <div class="blog-card-tags">
+                    <span class="blog-tag">API</span>
+                    <span class="blog-tag blog-tag--mcp">MCP</span>
+                    <span class="blog-tag blog-tag--x402">x402</span>
+                </div>
+                <h2>From drag-and-drop to autonomous agents: HTTP API, MCP, and pay-per-call</h2>
+                <p class="blog-card-excerpt">
+                    Two generation modes (AI vs schema), keyless settlement with HTTP 402, hosted MCP tools, and how it all maps to one product surface—illustrated with diagrams you can reuse in talks and threads.
+                </p>
+                <div class="blog-card-meta">
+                    <time datetime="2026-04-12">12 Apr 2026</time>
+                    <span aria-hidden="true">·</span>
+                    <span>DataGen</span>
+                </div>
+            </a>
+        </div>
+
+        <p class="blog-section-title" style="margin-top:48px;">Coming next</p>
+        <div class="blog-empty">
+            More posts on shipping, benchmarks, and customer patterns will land here periodically. Follow the <a href="rss.xml" style="color:#93c5fd;">RSS feed</a> or bookmark this page.
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                <p>&copy; 2025 Synthetic Data Generator. Free for general public use.</p>
+            </div>
+            <div class="footer-right">
+                <p><a href="https://github.com/shazily/syntheticdatagen" target="_blank" rel="noopener" class="footer-legal-link">GitHub</a> • <a href="../changelog.html" class="changelog-link">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                            <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM1.5 8a6.5 6.5 0 1 1 13 0 6.5 6.5 0 0 1-13 0z"/>
+                            <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 0-1H8V3.5z"/>
+                        </svg>
+                    Changelog
+                </a> • <a href="../privacy.html" class="footer-legal-link">Privacy</a> • <a href="../terms.html" class="footer-legal-link">Terms</a></p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

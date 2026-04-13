@@ -1,14 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-QZ9NFYW2F0"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-QZ9NFYW2F0');
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Platform Features - Synthetic Data Generator</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
-    <link rel="stylesheet" href="style.css?v=20251024001908">
+    <link rel="stylesheet" href="style.css?v=20251024010454">
 </head>
 <body>
-    <!-- Header -->
     <header class="header">
         <div class="header-content">
             <div class="logo-section">
@@ -23,9 +30,49 @@
                     <p>Generate complex synthetic data with AI-powered intelligence</p>
                 </div>
             </div>
-            <div class="header-actions">
-                <a href="index.html" class="btn-back">← Back to App</a>
-            </div>
+            <nav class="header-actions" aria-label="Primary navigation">
+                <a href="index.html" class="feedback-button-header" title="Open the Schema Builder and AI app">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                    <span>App</span>
+                </a>
+                <a href="api-developer-info.html" class="feedback-button-header" title="HTTP API overview and examples">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="16 18 22 12 16 6"></polyline>
+                        <polyline points="8 6 2 12 8 18"></polyline>
+                    </svg>
+                    <span>API</span>
+                </a>
+                <a href="mcp-developer-info.html" class="feedback-button-header" title="MCP integration for AI assistants and IDEs (on request)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"></path>
+                        <path d="M6 10h12v3a6 6 0 0 1-12 0v-3z"></path>
+                        <path d="M9 19v3M15 19v3"></path>
+                    </svg>
+                    <span>MCP</span>
+                </a>
+                <a href="features.html" class="feedback-button-header doc-nav-active" aria-current="page" title="Platform features (you are here)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1"/>
+                    </svg>
+                    <span>Features</span>
+                </a>
+                <a href="blog/index.html" class="feedback-button-header" title="DataGen blog — ship notes, API, MCP, x402">
+                    <span>Blog</span>
+                </a>
+                <a href="index.html" class="feedback-button-header" title="Open the app and use Feedback in the header">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span>Feedback</span>
+                </a>
+                <span class="beta-badge">BETA</span>
+            </nav>
         </div>
     </header>
 
@@ -34,7 +81,6 @@
         <section class="features-page">
             <div class="features-header">
                 <h1>🚀 Platform Features</h1>
-                <p>Comprehensive overview of all platform capabilities and upcoming features</p>
             </div>
 
             <!-- Current Features -->
@@ -65,6 +111,18 @@
                         <div class="feature-icon">🧠</div>
                         <h3>RAG System</h3>
                         <p>Vector database integration for continuous AI learning and improvement. The system gets smarter with every use.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔌</div>
+                        <h3>Agentic REST API (<code>/api/v1</code>)</h3>
+                        <p>FastAPI service with <strong>OpenAPI</strong> and interactive docs: tier <strong>capabilities</strong>, full <strong>field-types</strong> catalog, <strong>validate</strong>, <strong>generate</strong> from explicit schemas (JSON, CSV, JSONL, Excel, XML), and <strong>generate-ai</strong> from column names with optional <strong>SSE</strong> streaming. Use <strong>X-API-Key</strong> (including a free tier key), <strong>Idempotency-Key</strong> for safe retries, structured errors for agents, and <strong>x402</strong> where applicable.</p>
+                        <p style="margin-top:12px;font-size:0.9rem;"><a href="api-developer-info.html">API developer overview →</a></p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🧩</div>
+                        <h3>MCP server (tools &amp; resources)</h3>
+                        <p><strong>Model Context Protocol</strong> for AI assistants: DataGen exposed as MCP <strong>tools</strong> (health, validate, generate, AI generate, stream), <strong>resources</strong> (live catalog, OpenAPI, capabilities), and workflow <strong>prompts</strong>. Run over <strong>stdio</strong> for local clients (e.g. desktop agents) or <strong>HTTP/SSE</strong> at <code>/mcp</code> when mounted with the API.</p>
+                        <p style="margin-top:12px;font-size:0.9rem;"><a href="mcp-developer-info.html">MCP developer overview →</a></p>
                     </div>
                     <div class="feature-card">
                         <div class="feature-icon">📈</div>
@@ -130,10 +188,10 @@
                         <span class="roadmap-status">Q3 2025</span>
                     </div>
                     <div class="roadmap-item">
-                        <div class="roadmap-icon">🔌</div>
-                        <h3>API Endpoints</h3>
-                        <p>RESTful API for programmatic access. Integrate data generation into your applications.</p>
-                        <span class="roadmap-status">Q4 2025</span>
+                        <div class="roadmap-icon">📦</div>
+                        <h3>Client SDKs</h3>
+                        <p>Official typed clients and examples for common languages, built on the OpenAPI document and MCP transports.</p>
+                        <span class="roadmap-status">Future</span>
                     </div>
                 </div>
             </div>
@@ -175,30 +233,13 @@
                 <p>&copy; 2025 Synthetic Data Generator. Free for general public use.</p>
             </div>
             <div class="footer-right">
-                <p>Created by <strong>Shaziily Munawar</strong> • <a href="https://www.linkedin.com/in/shazilymunawar/" target="_blank" class="linkedin-link">
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M0 1.146C0 .513.526 0 1.175 0h13.65C15.474 0 16 .513 16 1.146v13.708c0 .633-.526 1.146-1.175 1.146H1.175C.526 16 0 15.487 0 14.854V1.146zm4.943 12.248V6.169H2.542v7.225h2.401zm-1.2-8.212c.837 0 1.358-.554 1.358-1.248-.015-.709-.52-1.248-1.342-1.248-.822 0-1.359.54-1.359 1.248 0 .694.521 1.248 1.327 1.248h.016zm4.908 8.212V9.359c0-.216.016-.432.08-.586.173-.431.568-.878 1.232-.878.869 0 1.216.662 1.216 1.634v3.865h2.401V9.25c0-2.22-1.184-3.252-2.764-3.252-1.274 0-1.845.7-2.165 1.193v.025h-.016a5.54 5.54 0 0 1 .016-.025V6.169h-2.4c.03.678 0 7.225 0 7.225h2.4z"/>
-                    </svg>
-                LinkedIn
-            </a> • <a href="https://github.com/shazily/syntheticdatagen" target="_blank" class="github-link">
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-                    </svg>
-                GitHub
-            </a> • <a href="changelog.html" class="changelog-link">
+                <p><a href="https://github.com/shazily/syntheticdatagen" target="_blank" rel="noopener" class="footer-legal-link">GitHub</a> • <a href="changelog.html" class="changelog-link">
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
                         <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM1.5 8a6.5 6.5 0 1 1 13 0 6.5 6.5 0 0 1-13 0z"/>
                         <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 0-1H8V3.5z"/>
                     </svg>
-                Changelog v2.2.0
-            </a> • <a href="index.html" class="features-link">
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM1.5 8a6.5 6.5 0 1 1 13 0 6.5 6.5 0 0 1-13 0z"/>
-                        <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 0-1H8V3.5z"/>
-                        <path d="M4 8a4 4 0 1 1 8 0 4 4 0 0 1-8 0z"/>
-                    </svg>
-                Features
-            </a></p>
+                Changelog
+            </a> • <a href="privacy.html" class="footer-legal-link">Privacy</a> • <a href="terms.html" class="footer-legal-link">Terms</a></p>
             </div>
         </div>
     </footer>

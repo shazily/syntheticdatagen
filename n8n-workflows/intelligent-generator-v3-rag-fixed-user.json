@@ -1,0 +1,192 @@
+{
+  "name": "Synthetic Data - Intelligent Generator V3 (RAG)",
+  "nodes": [
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { response: $('Data Generator (RAG)').item.json.response } }}",
+        "options": {}
+      },
+      "id": "4180bc74-5c90-4c5b-b4eb-8540fc570160",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [-128, -240],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO chat_logs (session_id, user_prompt, ai_message, generated_schema, generated_data_sample, record_count, success, error_message, user_agent)\nVALUES (\n  '{{ $('Extract Query').item.json.sessionId }}',\n  '{{ $('Extract Query').item.json.query.replace(/'/g, \"''\") }}',\n  '{{ $json.response.message.replace(/'/g, \"''\") }}',\n  $1,\n  $2,\n  {{ $json.response.recordCount }},\n  true,\n  NULL,\n  'rag-workflow'\n)\nRETURNING id;",
+        "options": {
+          "queryReplacement": "=[\n  \"{{ JSON.stringify($('Response Parser').item.json.parsedResponse.schema) }}\",\n  \"{{ JSON.stringify($json.response.data.slice(0, 3)) }}\"\n]"
+        }
+      },
+      "id": "a2a32b8a-7c4f-4bec-832f-03dfe467d514",
+      "name": "Save Chat Log",
+      "type": "n8n-nodes-base.postgres",
+      "position": [-336, -336],
+      "typeVersion": 2.4,
+      "credentials": {
+        "postgres": {
+          "id": "Qj2oredMBiLhvTqE",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.item.json.response;\n\nif (!response || !response.data || response.data.length === 0) {\n  return [{ json: $input.item.json }];\n}\n\nconst sampleRecords = response.data.slice(0, 5);\nconst firstRecord = sampleRecords[0];\nconst fieldNames = Object.keys(firstRecord);\n\nconst enrichedSchema = fieldNames.map(fieldName => {\n  const examples = sampleRecords\n    .map(record => record[fieldName])\n    .filter(val => val != null && val !== '');\n  \n  const sampleValue = examples[0];\n  let type = 'string';\n  if (typeof sampleValue === 'number') type = Number.isInteger(sampleValue) ? 'integer' : 'decimal';\n  if (typeof sampleValue === 'boolean') type = 'boolean';\n  if (fieldName.toLowerCase().includes('email')) type = 'email';\n  if (fieldName.toLowerCase().includes('date') || fieldName.toLowerCase().includes('time')) type = 'datetime';\n  if (fieldName.toLowerCase().includes('id')) type = 'uuid';\n  \n  return {\n    name: fieldName,\n    type: type,\n    description: `Auto-generated field: ${fieldName}`,\n    examples: examples.slice(0, 5)\n  };\n});\n\nconst domainName = (response.message || 'auto_domain')\n  .replace(/[^a-zA-Z0-9\\s-]/g, '')\n  .trim()\n  .substring(0, 50) || `auto_${Date.now()}`;\n\ntry {\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'http://host.docker.internal:5678/webhook/manage-domain-with-registry',\n    json: true,\n    body: {\n      domain: domainName,\n      schema: enrichedSchema,\n      action: 'create',\n      description: `Auto-generated domain`,\n      category: 'Auto-Generated'\n    },\n    timeout: 5000\n  });\n  console.log('Stored:', domainName);\n} catch (error) {\n  console.log('Skip:', error.message);\n}\n\nreturn [{ json: $input.item.json }];"
+      },
+      "id": "fb968b21-daf9-402d-b99e-b622e22484ea",
+      "name": "Auto-Store to Registry",
+      "type": "n8n-nodes-base.code",
+      "position": [-336, -144],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "functionCode": "// ========================================\n// DATA GENERATOR (RAG) - ROBUST & GENERIC\n// ========================================\n\nconst buildMessage = $('Build Enhanced System Message').item.json;\nconst parserOutput = $input.item.json;\n\nconst parsedResponse = parserOutput.parsedResponse || parserOutput;\n\nlet schema, recordCount, message;\n\nif (buildMessage.isSchemaProvided && buildMessage.providedSchema) {\n  schema = buildMessage.providedSchema;\n  recordCount = buildMessage.recordCount || 100;\n  message = 'Generating data using provided schema';\n} else {\n  schema = parsedResponse.schema || [];\n  recordCount = parsedResponse.recordCount || 100;\n  message = parsedResponse.message || '';\n}\n\nconst sampleData = parserOutput.sampleData || parsedResponse.sampleData;\n\nlet fieldPatterns = {};\n\nif (sampleData && Array.isArray(sampleData) && sampleData.length > 0) {\n  sampleData.forEach(record => {\n    Object.keys(record).forEach(fieldName => {\n      const value = record[fieldName];\n      if (value === null || value === undefined) return;\n      if (!fieldPatterns[fieldName]) fieldPatterns[fieldName] = [];\n      if (typeof value === 'string' && value.trim().length > 0) {\n        const trimmedValue = value.trim();\n        if (!fieldPatterns[fieldName].includes(trimmedValue)) fieldPatterns[fieldName].push(trimmedValue);\n      } else if (typeof value === 'number' && !isNaN(value)) {\n        if (!fieldPatterns[fieldName].includes(value)) fieldPatterns[fieldName].push(value);\n      } else if (typeof value === 'boolean') {\n        if (!fieldPatterns[fieldName].includes(value)) fieldPatterns[fieldName].push(value);\n      } else if (typeof value === 'object' && value !== null) {\n        fieldPatterns[fieldName].push(JSON.parse(JSON.stringify(value)));\n      }\n    });\n  });\n}\n\nfunction deepCopyIfObject(v) { return (typeof v === 'object' && v !== null) ? JSON.parse(JSON.stringify(v)) : v; }\nfunction getPatternValue(fieldName) {\n  if (!fieldPatterns || Object.keys(fieldPatterns).length === 0) return null;\n  const fieldNameLower = fieldName.toLowerCase();\n  if (fieldPatterns[fieldName] && fieldPatterns[fieldName].length > 0) {\n    const v = fieldPatterns[fieldName][Math.floor(Math.random() * fieldPatterns[fieldName].length)];\n    return deepCopyIfObject(v);\n  }\n  for (const patternFieldName in fieldPatterns) {\n    if (patternFieldName.toLowerCase() === fieldNameLower) {\n      const values = fieldPatterns[patternFieldName];\n      if (values && values.length > 0) { const v = values[Math.floor(Math.random() * values.length)]; return deepCopyIfObject(v); }\n    }\n  }\n  for (const patternFieldName in fieldPatterns) {\n    const patternFieldNameLower = patternFieldName.toLowerCase();\n    if (fieldNameLower.includes(patternFieldNameLower) && patternFieldNameLower.length > 3) {\n      const values = fieldPatterns[patternFieldName];\n      if (values && values.length > 0) { const v = values[Math.floor(Math.random() * values.length)]; return deepCopyIfObject(v); }\n    }\n  }\n  return null;\n}\n\nfunction generateByType(fieldType) {\n  const typeLower = (fieldType || 'string').toLowerCase();\n  if (typeLower.includes('int')) return Math.floor(Math.random() * 10000) + 1;\n  if (typeLower.includes('dec') || typeLower.includes('float') || typeLower.includes('num')) return parseFloat((Math.random() * 1000).toFixed(2));\n  if (typeLower.includes('bool')) return Math.random() > 0.5;\n  if (typeLower.includes('date')) return new Date().toISOString().split('T')[0];\n  if (typeLower.includes('uuid')) return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => (c === 'x' ? Math.random() * 16 | 0 : (Math.random() * 16 | 0) & 0x3 | 0x8).toString(16));\n  if (typeLower.includes('email')) return `user${Math.floor(Math.random() * 10000)}@example.com`;\n  if (typeLower === 'object' || typeLower.includes('object')) {\n    const r = () => Math.random().toString(36).slice(2, 10);\n    return { name: r(), city: r(), country: r(), address: r() };\n  }\n  if (typeLower === 'array' || typeLower.includes('array')) {\n    const len = 2 + Math.floor(Math.random() * 4);\n    return Array.from({ length: len }, (_, i) => 'Item ' + (i + 1));\n  }\n  return `sample_${typeLower}_value`;\n}\n\nfunction generateValue(fieldName, fieldType) {\n  const patternValue = getPatternValue(fieldName);\n  if (patternValue !== null) return patternValue;\n  return generateByType(fieldType);\n}\n\nlet data = [];\nconst previewCount = Math.min(10, recordCount);\n\nif (schema.length === 0 && sampleData && sampleData.length > 0) {\n  const firstRecord = sampleData[0];\n  schema = Object.keys(firstRecord).map(fieldName => {\n    const value = firstRecord[fieldName];\n    let fieldType = 'string';\n    if (typeof value === 'number') fieldType = Number.isInteger(value) ? 'int' : 'decimal';\n    else if (typeof value === 'boolean') fieldType = 'boolean';\n    return { name: fieldName, type: fieldType };\n  });\n}\n\nif (schema.length > 0) {\n  for (let i = 0; i < previewCount; i++) {\n    const record = {};\n    schema.forEach(field => {\n      record[field.name] = generateValue(field.name, field.type);\n    });\n    data.push(record);\n  }\n}\n\nconst successMessage = sampleData && sampleData.length > 0\n  ? message || 'Data generated using AI-provided patterns'\n  : message || 'Data generated using type-based generators';\n\nreturn [{\n  json: {\n    response: {\n      message: successMessage,\n      schema: schema,\n      data: data,\n      recordCount: recordCount,\n      rag_enhanced: buildMessage.retrievedExamples > 0,\n      fieldPatterns: fieldPatterns\n    }\n  }\n}];"
+      },
+      "id": "39df1cc2-a56c-4f9c-9b2b-9741de6885c2",
+      "name": "Data Generator (RAG)",
+      "type": "n8n-nodes-base.function",
+      "position": [-544, -240],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "model": "llama3.2:latest",
+        "options": { "temperature": 0.7, "keepAlive": "1h", "numCtx": 4096 }
+      },
+      "id": "b68680af-fbf2-44bb-b0db-a82ceecea36b",
+      "name": "Ollama Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "position": [-992, 32],
+      "typeVersion": 1,
+      "credentials": { "ollamaApi": { "id": "jmFnQptmLMNT8nwD", "name": "Ollama account 2" } }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Webhook Trigger').first().json.body.chatInput || $('Webhook Trigger').item.json.body.chatInput || $json.body.chatInput }}",
+        "hasOutputParser": true,
+        "options": { "systemMessage": "={{ $('Build Enhanced System Message').item.json.systemMessage }}" }
+      },
+      "id": "412d5aee-9127-4151-bd3e-00d760893103",
+      "name": "AI Agent (RAG-Enhanced)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [-992, -336],
+      "typeVersion": 1.8
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Extract Query').item.json.sessionId }}",
+        "contextWindowLength": 10
+      },
+      "id": "e41635a4-3b44-4983-9468-b4e3d1b6b83b",
+      "name": "Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [-896, -64],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build enhanced system message with retrieved examples\nconst searchResults = $input.item.json.result || [];\nconst webhookData = $('Webhook Trigger').item.json;\n\nif (webhookData.body && webhookData.body.schema && Array.isArray(webhookData.body.schema) && webhookData.body.schema.length > 0) {\n  return [{\n    json: {\n      systemMessage: \"Use the provided schema to generate data. Do not modify the schema.\",\n      providedSchema: webhookData.body.schema,\n      recordCount: webhookData.body.recordCount || 100,\n      isSchemaProvided: true,\n      webhookData: webhookData.body\n    }\n  }];\n}\n\nlet enhancedSystemMessage = `You are a specialized synthetic data generator assistant. Your ONLY purpose is to help users generate test/dummy/sample data.\n\nYOUR ROLE:\n- Generate synthetic data for ANY use case requested by users\n- Accept all requests related to data generation\n- ONLY decline if asked completely unrelated questions\n\nYOUR PROCESS:\n1. UNDERSTAND: Read the request and conversational context\n2. EXTRACT: Identify dataset type, fields, rules\n3. DESIGN: Create schema with appropriate field names/types\n4. RESPOND: Provide the JSON schema format\n\nIMPORTANT RULES:\n- MAXIMUM 1,000 records per request\n- Default to 100 records if not specified\n- Be creative with field types\n\nRESPONSE FORMAT (JSON only - CRITICAL: Must be a SINGLE VALID JSON object):\n{\n  \"message\": \"Brief explanation of what you're generating\",\n  \"schema\": [\n    {\"name\": \"descriptive_field_name\", \"type\": \"appropriate_type\"},\n    ...\n  ],\n  \"recordCount\": number,\n  \"sampleData\": [\n    {\"field1\": \"value1\", \"field2\": \"value2\", ...},\n    ... (at least 10 sample records)\n  ]\n}\n\nCRITICAL JSON RULES:\n- Output ONLY valid JSON. Start with { and end with }\n- NO markdown blocks (no \\`\\`\\`json)\n- NO conversational text before or after the JSON\n- All strings must be properly quoted\n\n`;\n\nif (searchResults.length > 0) {\n  enhancedSystemMessage += \"\\n\\nRELEVANT EXAMPLES (Use as inspiration):\\n\";\n  searchResults.forEach((result, index) => {\n    const payload = result.payload;\n    enhancedSystemMessage += `Example ${index + 1}:\\n${JSON.stringify(payload.schema, null, 2)}\\n\\n`;\n  });\n}\n\nenhancedSystemMessage += `EXAMPLES OF CORRECT OUTPUT FORMAT:\n\n{\n  \"message\": \"Generating credit card transaction records.\",\n  \"schema\": [\n    {\"name\": \"transaction_id\", \"type\": \"transactionId\"},\n    {\"name\": \"amount\", \"type\": \"transactionAmount\"},\n    {\"name\": \"status\", \"type\": \"paymentStatus\"}\n  ],\n  \"recordCount\": 100,\n  \"sampleData\": [\n    {\"transaction_id\": \"TXN001\", \"amount\": 99.99, \"status\": \"completed\"},\n    {\"transaction_id\": \"TXN002\", \"amount\": 45.50, \"status\": \"pending\"}\n  ]\n}\n\n{\n  \"message\": \"Creating loyalty program member records.\",\n  \"schema\": [\n    {\"name\": \"member_id\", \"type\": \"uuid\"},\n    {\"name\": \"email\", \"type\": \"email\"},\n    {\"name\": \"tier\", \"type\": \"membershipTier\"}\n  ],\n  \"recordCount\": 100,\n  \"sampleData\": [\n    {\"member_id\": \"550e8400-e29b\", \"email\": \"alice@example.com\", \"tier\": \"Gold\"},\n    {\"member_id\": \"6ba7b810-9dad\", \"email\": \"bob@example.com\", \"tier\": \"Silver\"}\n  ]\n}\n`;\n\nreturn [{\n  json: {\n    systemMessage: enhancedSystemMessage,\n    retrievedExamples: searchResults.length,\n    webhookData: webhookData.body\n  }\n}];"
+      },
+      "id": "bde87037-1274-436f-90ef-0b72490120eb",
+      "name": "Build Enhanced System Message",
+      "type": "n8n-nodes-base.code",
+      "position": [-1168, -208],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:6333/collections/successful_schemas/points/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"vector\": $json.embedding, \"limit\": 4, \"with_payload\": true } }}",
+        "options": {}
+      },
+      "id": "115f1df1-db57-4264-97b7-c30487009926",
+      "name": "Search Qdrant",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [-1344, 0],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/embeddings",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"model\": \"llama3.2:latest\", \"prompt\": $json.query } }}",
+        "options": {}
+      },
+      "id": "46ebb808-826f-41bd-a327-87394d1382e5",
+      "name": "Generate Embedding",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [-1392, -320],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "user-prompt", "name": "query", "value": "={{ $json.body.chatInput || $json.body.prompt || $json.chatInput || $json.prompt }}", "type": "string" },
+            { "id": "session-id", "name": "sessionId", "value": "={{ $json.body.sessionId || $json.sessionId || 'default-session' }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c1baf511-c722-4dce-854b-5e7a7d28c924",
+      "name": "Extract Query",
+      "type": "n8n-nodes-base.set",
+      "position": [-1552, -240],
+      "typeVersion": 3.3
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-intelligent-v3-learn",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "826c637c-06c3-442a-b8d8-1911c5b1340b",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [-1744, -240],
+      "typeVersion": 1.1,
+      "webhookId": "generate-intelligent-v3-fixed-webhook"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// RESPONSE PARSER - Extract JSON from AI output (string or object).\nconst raw = $input.first().json;\nconst rawOutput = (raw && typeof raw === 'object' && (raw.output !== undefined ? raw.output : raw.text || raw.message)) || (typeof raw === 'string' ? raw : '');\nconst rawStr = typeof rawOutput === 'string' ? rawOutput : JSON.stringify(rawOutput || '');\n\nlet finalObject = {};\nlet sampleData = [];\n\n// 1) Try direct parse (output is often a JSON string)\ntry {\n  finalObject = JSON.parse(rawStr);\n  if (finalObject && typeof finalObject === 'object') {\n    sampleData = Array.isArray(finalObject.sampleData) ? finalObject.sampleData : [];\n  }\n} catch (e) {\n  // 2) Brace-count: find first { and matching }\n  let start = rawStr.indexOf('{');\n  if (start !== -1) {\n    let depth = 0;\n    let end = -1;\n    for (let i = start; i < rawStr.length; i++) {\n      if (rawStr[i] === '{') depth++;\n      else if (rawStr[i] === '}') { depth--; if (depth === 0) { end = i; break; } }\n    }\n    if (end !== -1) {\n      try {\n        finalObject = JSON.parse(rawStr.substring(start, end + 1));\n        sampleData = Array.isArray(finalObject.sampleData) ? finalObject.sampleData : [];\n      } catch (e2) {}\n    }\n  }\n}\n\nif (!Array.isArray(finalObject.schema)) finalObject.schema = [];\nif (typeof finalObject.recordCount !== 'number') finalObject.recordCount = 100;\nif (!Array.isArray(sampleData)) sampleData = finalObject.sampleData || [];\n\nreturn [{\n  json: {\n    parsedResponse: finalObject,\n    sampleData: sampleData\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-688, -384],
+      "id": "22edf57e-8753-4655-aee3-41cfc7de05db",
+      "name": "Response Parser"
+    }
+  ],
+  "connections": {
+    "Save Chat Log": { "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]] },
+    "Auto-Store to Registry": { "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]] },
+    "Data Generator (RAG)": { "main": [[{ "node": "Auto-Store to Registry", "type": "main", "index": 0 }, { "node": "Save Chat Log", "type": "main", "index": 0 }]] },
+    "Ollama Chat Model": { "ai_languageModel": [[{ "node": "AI Agent (RAG-Enhanced)", "type": "ai_languageModel", "index": 0 }]] },
+    "AI Agent (RAG-Enhanced)": { "main": [[{ "node": "Response Parser", "type": "main", "index": 0 }]] },
+    "Chat Memory": { "ai_memory": [[{ "node": "AI Agent (RAG-Enhanced)", "type": "ai_memory", "index": 0 }]] },
+    "Build Enhanced System Message": { "main": [[{ "node": "AI Agent (RAG-Enhanced)", "type": "main", "index": 0 }]] },
+    "Search Qdrant": { "main": [[{ "node": "Build Enhanced System Message", "type": "main", "index": 0 }]] },
+    "Generate Embedding": { "main": [[{ "node": "Search Qdrant", "type": "main", "index": 0 }]] },
+    "Extract Query": { "main": [[{ "node": "Generate Embedding", "type": "main", "index": 0 }]] },
+    "Webhook Trigger": { "main": [[{ "node": "Extract Query", "type": "main", "index": 0 }]] },
+    "Response Parser": { "main": [[{ "node": "Data Generator (RAG)", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "meta": { "templateCredsSetupCompleted": true }
+}

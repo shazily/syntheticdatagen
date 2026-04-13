@@ -30,6 +30,7 @@ fake = Faker()
 
 # Ollama configuration
 OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
+OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama2')
 
 class DataSchema(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -133,7 +134,7 @@ class OllamaIntegration:
             response = requests.post(
                 f"{self.host}/api/generate",
                 json={
-                    "model": "llama2",  # Adjust model as needed
+                    "model": OLLAMA_MODEL,
                     "prompt": prompt,
                     "stream": False
                 },
@@ -180,6 +181,29 @@ ollama = OllamaIntegration()
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/api/ai-generate', methods=['POST'])
+def ai_generate():
+    """One-shot AI generate: chatInput -> Ollama schema -> generate data. No n8n. Same shape as n8n webhook."""
+    try:
+        data = request.get_json() or {}
+        chat_input = data.get('chatInput', data.get('prompt', ''))
+        if not chat_input:
+            return jsonify({'error': 'chatInput is required'}), 400
+        schema = ollama.generate_schema_from_request(chat_input)
+        if not schema:
+            schema = ollama._generate_fallback_schema(chat_input)
+        record_count = min(100, max(1, data.get('recordCount', 10)))
+        generated = data_generator.generate_data(schema, record_count)
+        return jsonify({
+            'response': {
+                'message': f'Generated {len(generated)} records.',
+                'data': generated,
+                'schema': schema,
+            }
+        })
+    except Exception as e:
+        return jsonify({'error': str(e), 'response': None}), 500
 
 @app.route('/api/generate-schema', methods=['POST'])
 def generate_schema():
@@ -430,4 +454,5 @@ if __name__ == "__main__":
     return code
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    port = int(os.getenv('PORT', 3005))
+    app.run(host='0.0.0.0', port=port, debug=True)
