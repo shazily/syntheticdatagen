@@ -1,0 +1,18 @@
+# Manual “touchless” image build. Add docker/login + build-push when you configure registry secrets.
+name: Build API Docker image
+
+on:
+  workflow_dispatch:
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Docker build (API)
+        run: docker build -f Dockerfile.api -t datagen-api:${{ github.sha }} .
+
+      - name: Hint
+        run: |
+          echo "To push: add a job with docker/login-action + build-push-action and secrets for your registry."

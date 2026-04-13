@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API — Synthetic Data Generator</title>
+    <link rel="stylesheet" href="style.css?v=20251024010454">
+    <style>
+        .api-doc-page { max-width: 720px; margin: 0 auto; padding: 24px 20px 80px; }
+        .api-doc-page h1 { font-size: 1.65rem; margin-bottom: 0.35rem; }
+        .api-doc-page h2 { font-size: 1.15rem; margin-top: 2rem; margin-bottom: 0.65rem; color: var(--text-primary, #e8eaed); }
+        .api-doc-page p, .api-doc-page li { color: var(--text-secondary, #b4bcc8); line-height: 1.65; }
+        .api-doc-page code { background: rgba(255,255,255,.06); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+        .api-doc-page .card { background: var(--bg-secondary, #1a1d24); border: 1px solid var(--border, #2d333b); border-radius: 10px; padding: 16px 18px; margin: 14px 0; }
+        .api-doc-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 1.5rem; }
+        .api-doc-actions a { text-decoration: none; }
+        .coming-soon { border-left: 3px solid var(--accent, #3b82f6); padding-left: 14px; margin: 1rem 0; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo-section">
+                <div class="logo">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <path d="M9 9h6v6H9z"/>
+                    </svg>
+                </div>
+                <div class="title-section">
+                    <h1 style="font-size:1.2rem;margin:0;">API</h1>
+                    <p class="panel-description" style="margin:4px 0 0 0;">Connect your software, tests, and workflows to realistic sample data</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <a href="index.html" class="feedback-button-header">← Home</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container api-doc-page">
+        <p>
+            If your team needs sample names, addresses, IDs, and other realistic fields inside <strong>automated tests</strong>, <strong>staging databases</strong>, or <strong>internal tools</strong>, the API lets you request that data directly from your own code—no copy-paste from the browser.
+            The fields you define here in the generator are the same ones you send over the API.
+        </p>
+
+        <h2>What the API does for you</h2>
+        <div class="card">
+            <ul>
+                <li><strong>See what is available</strong> — list supported field types and limits for your plan.</li>
+                <li><strong>Check before you generate</strong> — confirm your layout is valid so you do not waste time on a bad request.</li>
+                <li><strong>Download results</strong> — get data as JSON, CSV, or line-delimited JSON for spreadsheets or pipelines.</li>
+            </ul>
+            <p style="margin-bottom:0;font-size:0.92em;">Technical paths: <code>GET /api/v1/capabilities</code>, <code>POST /api/v1/validate</code>, <code>POST /api/v1/generate</code>.</p>
+        </div>
+
+        <h2>Interactive reference</h2>
+        <p>
+            Browse every endpoint, try requests from the browser, and copy working examples from the <strong>live API reference</strong> at <a href="/api/v1/docs">/api/v1/docs</a> (same site you are on now).
+            If your tools need a machine-readable description, use <a href="/api/v1/openapi.json">/api/v1/openapi.json</a>.
+        </p>
+
+        <h2>Get started in three steps</h2>
+        <div class="card">
+            <p><strong>1. Get a free API key</strong></p>
+            <p>
+                Open <a href="/api/v1/auth/free-key">Get a free API key</a>. You will receive a short JSON response with your key (it starts with <code>DATAGEN-FREE-</code>).
+                Treat it like a password—anyone with the key can use your free-tier allowance. If you are on a shared office network, your team may share the same request limits; wait a bit and try again, or reuse a key you already saved.
+            </p>
+            <p><strong>2. Attach the key to each request</strong></p>
+            <p>
+                Add an HTTP header: <code>X-API-Key:</code> followed by your key.
+                In the interactive reference, click <strong>Authorize</strong>, paste the key once, then use <strong>Try it out</strong> on any operation. Popular clients such as Postman or curl work the same way.
+            </p>
+            <p><strong>3. Call in a sensible order</strong></p>
+            <p>
+                Start with capabilities, validate your field list, then generate rows. The interactive reference lists response codes and example bodies for each endpoint.
+            </p>
+        </div>
+        <div class="api-doc-actions">
+            <a href="/api/v1/docs" class="btn-primary">Open interactive API reference</a>
+            <a href="/api/v1/auth/free-key" class="btn-secondary" style="display:inline-block;padding:10px 18px;border-radius:8px;border:1px solid var(--border,#2d333b);color:var(--text-primary,#e8eaed);">Get a free API key</a>
+            <a href="/api/v1/capabilities" class="btn-secondary" style="display:inline-block;padding:10px 18px;border-radius:8px;border:1px solid var(--border,#2d333b);color:var(--text-primary,#e8eaed);">Capabilities for your tier</a>
+            <a href="/api/v1/field-types" class="btn-secondary" style="display:inline-block;padding:10px 18px;border-radius:8px;border:1px solid var(--border,#2d333b);color:var(--text-primary,#e8eaed);">Full field-type catalog</a>
+        </div>
+
+        <h2>AI mode (column names only)</h2>
+        <p>
+            <strong><code>POST /api/v1/generate-ai</code></strong> accepts a list of column names. The service infers a canonical data type for each column and fills realistic sample rows (LLM when available, with safe local fallbacks).
+            On the <strong>free</strong> tier you can request up to <strong>100 rows</strong> per call; higher tiers allow larger batches. Use the same <code>X-API-Key</code> header as other endpoints. Details and try-it-out live in <a href="/api/v1/docs">the API reference</a>.
+        </p>
+
+        <h2>For your IT or integration team</h2>
+        <p>
+            The interactive reference can be linked or embedded in your internal wiki the same way you would embed any secure page on this domain.
+            Teams that maintain their own developer portal can import <code>/api/v1/openapi.json</code> into Postman, Scalar, Redoc, or similar products.
+        </p>
+
+        <h2>Higher limits and teams</h2>
+        <div class="coming-soon">
+            <p style="margin:0;"><strong>Coming soon:</strong> plans with higher volume, faster throughput, and team-friendly billing for production-style workloads. Details will appear on this page when they are ready.</p>
+        </div>
+    </main>
+</body>
+</html>

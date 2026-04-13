@@ -41,6 +41,10 @@ services:
       - "3006:80"
     volumes:
       - ./frontend-v3:/usr/share/nginx/html:ro
+      # Admin dashboard lives in frontend/; v3 tree has no admin — overlay so /admin matches v2.
+      - ./frontend/admin.html:/usr/share/nginx/html/admin.html:ro
+      - ./frontend/admin.js:/usr/share/nginx/html/admin.js:ro
+      - ./frontend/admin.css:/usr/share/nginx/html/admin.css:ro
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     restart: unless-stopped
     networks:
@@ -61,6 +65,59 @@ services:
     restart: unless-stopped
     networks:
       - synthetic-data-net
+
+  # Host publish ports chosen after checking this machine: 6379, 8000, 11434 were
+  # already LISTEN (same stack / Docker). Map host -> container only; internal DNS
+  # unchanged (redis:6379, api:8000, ollama:11434). From host: Redis :16379, API :18000, Ollama :21500.
+  redis:
+    image: redis:7-alpine
+    container_name: synthetic-data-redis
+    ports:
+      - "16379:6379"
+    restart: unless-stopped
+    networks:
+      - synthetic-data-net
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: synthetic-data-ollama
+    ports:
+      - "21500:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - synthetic-data-net
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: synthetic-data-api
+    ports:
+      - "18000:8000"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=llama3.2:1b
+      - QDRANT_URL=http://qdrant:6333
+      - REDIS_URL=redis://redis:6379
+      - DATAGEN_WALLET_ADDRESS=${DATAGEN_WALLET_ADDRESS:-}
+      - X402_FACILITATOR_URL=https://x402.org
+      - X402_NETWORK=base-sepolia
+      - X402_ASSET=0x036CbD53842c5426634e7929541eC2318f3dCF7e
+    depends_on:
+      - ollama
+      - qdrant
+      - redis
+    volumes:
+      - ./api:/app
+      - ./ollama_service.py:/ollama_service.py
+    restart: unless-stopped
+    networks:
+      - synthetic-data-net
+
+volumes:
+  ollama_models:
 
 networks:
   synthetic-data-net:

@@ -1,0 +1,43 @@
+# Touchless CI: lint imports + API tests on every push/PR touching api/
+name: API CI
+
+on:
+  push:
+    paths:
+      - "api/**"
+      - "ollama_service.py"
+      - "Dockerfile.api"
+      - ".github/workflows/api-ci.yml"
+  pull_request:
+    paths:
+      - "api/**"
+      - "ollama_service.py"
+      - "Dockerfile.api"
+      - ".github/workflows/api-ci.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run tests
+        run: python -m pytest tests/ -v --tb=short
+
+      - name: Verify Docker build (API image)
+        working-directory: ${{ github.workspace }}
+        run: docker build -f Dockerfile.api -t datagen-api:ci .
