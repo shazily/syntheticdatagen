@@ -49,6 +49,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from typing import Any
 import uuid
 from datetime import date
@@ -69,7 +70,8 @@ import httpx
 import redis.asyncio as aioredis
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse, Response, StreamingResponse
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response, StreamingResponse
 
 from ai_generate_service import (
     faker_fallback_records,
@@ -147,7 +149,7 @@ app = FastAPI(
         "`info.description` when OpenAPI is built so [Swagger](/api/v1/docs) always matches this deployment."
     ),
     version="1.1.0",
-    docs_url="/api/v1/docs",
+    docs_url=None,
     redoc_url=None,
     openapi_url="/api/v1/openapi.json",
     openapi_tags=_OPENAPI_TAGS,
@@ -1164,6 +1166,38 @@ def _mount_mcp_http() -> None:
 
 
 _mount_mcp_http()
+
+
+def _swagger_ui_html_with_topnav() -> str:
+    """Inject a slim top bar so /api/v1/docs is not a dead-end (works behind nginx on same host)."""
+    core = get_swagger_ui_html(
+        openapi_url="/api/v1/openapi.json",
+        title=f"{app.title} – Swagger UI",
+        swagger_ui_parameters={"tryItOutEnabled": True},
+    )
+    html = core.body.decode("utf-8")
+    nav = (
+        '<div id="datagen-docs-nav" role="navigation" aria-label="DataGen site" '
+        'style="font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;'
+        "padding:0.65rem 1.25rem;display:flex;flex-wrap:wrap;gap:0.75rem 1.25rem;align-items:center;"
+        'border-bottom:1px solid #334155;font-size:14px;line-height:1.4">'
+        '<strong style="color:#f8fafc;letter-spacing:-.02em">DataGen API</strong>'
+        '<a href="/" style="color:#7dd3fc;text-decoration:none">Site home</a>'
+        '<a href="/index.html?app=1" style="color:#7dd3fc;text-decoration:none">App workspace</a>'
+        '<a href="/api-developer-info.html" style="color:#7dd3fc;text-decoration:none">API overview</a>'
+        '<a href="/mcp-developer-info.html" style="color:#94a3b8;text-decoration:none">MCP overview</a>'
+        f'<span style="margin-left:auto;color:#64748b;font-size:12px">OpenAPI {app.version}</span></div>'
+    )
+    m = re.search(r"<body([^>]*)>", html, flags=re.IGNORECASE)
+    if m:
+        return html[: m.end()] + nav + html[m.end() :]
+    return nav + html
+
+
+@app.get("/api/v1/docs", include_in_schema=False)
+async def swagger_ui_documentation() -> HTMLResponse:
+    """Interactive OpenAPI (Swagger UI) with links back to the marketing site and app."""
+    return HTMLResponse(content=_swagger_ui_html_with_topnav(), status_code=200)
 
 
 def custom_openapi() -> dict:
