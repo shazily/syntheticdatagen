@@ -1,11 +1,16 @@
 # Touchless CI: lint imports + API tests on every push/PR touching api/
 name: API CI
 
+concurrency:
+  group: api-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 on:
   workflow_dispatch:
   push:
     paths:
       - "api/**"
+      - "frontend/**"
       - "ollama_service.py"
       - "Dockerfile.api"
       - "docker-compose.yml"
@@ -14,6 +19,7 @@ on:
   pull_request:
     paths:
       - "api/**"
+      - "frontend/**"
       - "ollama_service.py"
       - "Dockerfile.api"
       - "docker-compose.yml"
@@ -89,3 +95,50 @@ jobs:
           DATAGEN_API_BASE: http://127.0.0.1:18000
           MCP_E2E_GENERATE: "1"
         run: python api/tests/test_mcp_sse_client.py
+
+  # Requires repo secrets: SERVER_HOST, SERVER_USER, SERVER_SSH_KEY (private key), SERVER_REPO_PATH
+  deploy:
+    name: Deploy API to VPS
+    runs-on: ubuntu-latest
+    needs: [mcp-e2e]
+    if: >-
+      github.repository == 'shazily/syntheticdatagen' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    steps:
+      - name: SSH — git pull + rebuild API container
+        uses: appleboy/ssh-action@v1
+        env:
+          SERVER_REPO_PATH: ${{ secrets.SERVER_REPO_PATH }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          protocol: tcp
+          command_timeout: 30m
+          envs: SERVER_REPO_PATH
+          script_stop: true
+          script: |
+            set -euo pipefail
+            test -n "${SERVER_REPO_PATH:-}"
+            cd "$SERVER_REPO_PATH"
+            git fetch origin main
+            git checkout main
+            git pull --ff-only origin main
+            docker compose up -d --build api
+
+      - name: Verify public OpenAPI (1.1.0)
+        run: |
+          set -e
+          for i in $(seq 1 18); do
+            ver=$(curl -sS "https://datagen.gptlab.ae/api/v1/openapi.json" | python -c "import sys,json; print(json.load(sys.stdin)['info'].get('version',''))")
+            echo "attempt $i: OpenAPI info.version=$ver"
+            if [ "$ver" = "1.1.0" ]; then
+              echo "Deploy verification OK"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Timed out waiting for 1.1.0 on production"
+          exit 1
