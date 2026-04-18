@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+import time
+import uuid
 from typing import Awaitable, Callable
 
 import httpx
@@ -50,6 +52,8 @@ class X402Middleware(BaseHTTPMiddleware):
             count = int(data.get("count", data.get("recordCount", 10)))
             amount = get_x402_price(count)
             resource = str(request.url)
+            nonce = uuid.uuid4().hex
+            expiry = int(time.time()) + 300
             payment_requirements = {
                 "accepts": [
                     {
@@ -62,10 +66,24 @@ class X402Middleware(BaseHTTPMiddleware):
                         "payTo": WALLET_ADDRESS,
                         "maxTimeoutSeconds": 60,
                         "asset": USDC_ADDRESS,
+                        "nonce": nonce,
+                        "expiry": expiry,
                         "extra": {"name": "DataGen Synthetic Data API", "version": "1"},
                     }
                 ]
             }
+
+            r_nonce = redis.from_url(
+                os.getenv("REDIS_URL", "redis://redis:6379"),
+                socket_connect_timeout=1.5,
+            )
+            try:
+                await r_nonce.ping()
+                await r_nonce.setex(f"x402:nonce:{nonce}", 300, str(amount))
+            except Exception:
+                pass
+            finally:
+                await r_nonce.aclose()
 
             async def receive() -> dict:
                 return {"type": "http.request", "body": raw, "more_body": False}

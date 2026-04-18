@@ -99,13 +99,17 @@ services:
       - OLLAMA_MODEL=llama3.2:1b
       - QDRANT_URL=http://qdrant:6333
       - REDIS_URL=redis://redis:6379
+      - SERVER_SECRET_SALT=${SERVER_SECRET_SALT:-}
       # Hosted MCP (HTTP/SSE) on same service as REST — nginx proxies /mcp/ → api:8000/mcp/
       - DATAGEN_MCP_HTTP=1
       - DATAGEN_MCP_REQUIRE_API_KEY=1
       - DATAGEN_WALLET_ADDRESS=${DATAGEN_WALLET_ADDRESS:-}
+      - X402_ESCROW_CONTRACT=${X402_ESCROW_CONTRACT:-}
       - X402_FACILITATOR_URL=https://x402.org
       - X402_NETWORK=base-sepolia
       - X402_ASSET=0x036CbD53842c5426634e7929541eC2318f3dCF7e
+      # Escrow invoice 402 (agentic): must match testnet when using Base Sepolia USDC above
+      - BASE_CHAIN_ID=84532
     depends_on:
       - ollama
       - qdrant

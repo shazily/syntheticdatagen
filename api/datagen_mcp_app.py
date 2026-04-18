@@ -120,6 +120,30 @@ async def datagen_capabilities() -> str:
 
 
 @mcp.tool()
+async def datagen_infer_schema(
+    field_names: list[str],
+    locale: str = "en_US",
+    domain_hint: str | None = None,
+) -> str:
+    """Infer explicit schema contract from column names via POST /api/v1/infer-schema."""
+    body: dict[str, Any] = {
+        "field_names": field_names,
+        "locale": locale,
+    }
+    if domain_hint:
+        body["domain_hint"] = domain_hint
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        r = await client.post(
+            f"{_base()}/api/v1/infer-schema",
+            headers=_headers(content_type="application/json"),
+            json=body,
+        )
+        if not r.is_success:
+            return _http_error_detail(r)
+        return json.dumps(r.json(), indent=2)
+
+
+@mcp.tool()
 async def datagen_validate(
     schema_fields: list[dict[str, Any]],
     count: int = 10,

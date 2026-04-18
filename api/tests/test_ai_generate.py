@@ -79,6 +79,61 @@ def test_generate_ai_no_key_402(client: TestClient):
     assert r.status_code == 402
 
 
+def test_infer_schema_returns_contract_hash(client: TestClient):
+    async def fake_infer(*args, **kwargs):
+        return [{"name": "email", "type": "email", "description": "d", "inference_source": "ollama"}]
+
+    with patch("main.infer_schema_from_field_names", side_effect=fake_infer):
+        r = client.post(
+            "/api/v1/infer-schema",
+            json={"field_names": ["email"], "locale": "en_US"},
+        )
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["proposed_schema"][0]["name"] == "email"
+    assert len(out["contract_hash"]) == 64
+    assert out["contract_id"].startswith("ctr_")
+
+
+def test_generate_ai_contract_hash_mismatch_409(client: TestClient):
+    async def fake_infer(*args, **kwargs):
+        return [{"name": "a", "type": "email", "description": "d", "inference_source": "ollama"}]
+
+    with patch("main.infer_schema_from_field_names", side_effect=fake_infer):
+        r = client.post(
+            "/api/v1/generate-ai",
+            headers={"X-API-Key": "DATAGEN-FREE-abcd1234efgh"},
+            json={
+                "field_names": ["a"],
+                "count": 1,
+                "locale": "en_US",
+                "output_format": "json",
+                "expected_contract_hash": "deadbeef",
+            },
+        )
+    assert r.status_code == 409, r.text
+    assert "hash mismatch" in r.text.lower()
+
+
+def test_generate_ai_require_validate_422(client: TestClient):
+    async def fake_infer(*args, **kwargs):
+        return [{"name": "card", "type": "creditCard", "description": "d", "inference_source": "ollama"}]
+
+    with patch("main.infer_schema_from_field_names", side_effect=fake_infer):
+        r = client.post(
+            "/api/v1/generate-ai",
+            headers={"X-API-Key": "DATAGEN-FREE-abcd1234efgh"},
+            json={
+                "field_names": ["card"],
+                "count": 1,
+                "locale": "en_US",
+                "output_format": "json",
+                "require_validate": True,
+            },
+        )
+    assert r.status_code == 422, r.text
+
+
 def test_heuristic_infer_schema_roundtrip():
     from ai_generate_service import heuristic_infer_schema
 

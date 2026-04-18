@@ -86,6 +86,19 @@ class GenerationRequest(BaseModel):
         None,
         description="Optional pattern map from AI mode (n8n contract); ignored by this API for now.",
     )
+    agent_address: str | None = Field(
+        None,
+        description="Optional payer wallet address for non-custodial escrow settlement.",
+    )
+    nonce: int | None = Field(
+        None,
+        ge=0,
+        description="Optional escrow nonce (required for concurrent escrowed requests).",
+    )
+    payment_tx_hash: str | None = Field(
+        None,
+        description="Optional Base transaction hash proving escrow lock (0x...).",
+    )
 
 
 class ConversationalError(BaseModel):
@@ -207,6 +220,61 @@ class AiGenerateRequest(BaseModel):
         max_length=2000,
         description="Optional short context (e.g. 'UAE ice cream shops') to steer type inference.",
     )
+    require_validate: bool = Field(
+        False,
+        description="If true, inferred schema must pass /validate-style checks before generation.",
+    )
+    strict_contract: bool = Field(
+        False,
+        description="If true, reject inference when any field falls back to heuristic inference.",
+    )
+    expected_contract_hash: str | None = Field(
+        None,
+        description="Optional SHA-256 of expected inferred contract; request fails on mismatch.",
+    )
+
+
+class AiInferSchemaRequest(BaseModel):
+    """Infer explicit schema contract from field names (no row generation)."""
+
+    model_config = ConfigDict(populate_by_name=True, extra="ignore")
+
+    field_names: list[str] = Field(
+        ...,
+        min_length=1,
+        max_length=80,
+        description="Output column names to infer into explicit schema fields.",
+    )
+    locale: str = Field(
+        "en_US",
+        description="Locale hint for inference.",
+    )
+    domain_hint: str | None = Field(
+        None,
+        max_length=2000,
+        description="Optional domain context to steer type inference.",
+    )
+
+
+class AiInferSchemaResponse(BaseModel):
+    """Response for inferred contract artifact."""
+
+    proposed_schema: list[dict[str, Any]] = Field(
+        ...,
+        description="Inferred explicit schema fields (name/type/description).",
+    )
+    contract_hash: str = Field(
+        ...,
+        description="SHA-256 hash of canonicalized proposed_schema for contract lock/replay checks.",
+    )
+    contract_id: str = Field(
+        ...,
+        description="Ephemeral contract artifact id for traceability in logs.",
+    )
+    locale: str = Field(
+        ...,
+        description="Locale used during schema inference.",
+    )
 
 
 class CapabilityManifest(BaseModel):
@@ -232,4 +300,11 @@ class CapabilityManifest(BaseModel):
     payment_options: dict[str, Any] = Field(
         ...,
         description="Both API key tiers and x402 per-call pricing.",
+    )
+    payment_environment: dict[str, Any] = Field(
+        ...,
+        description=(
+            "Runtime payment rails for this deployment: x402 network string, facilitator URLs, "
+            "USDC contract, optional escrow canary chain id — mirrors OpenAPI / payment middleware."
+        ),
     )

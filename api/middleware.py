@@ -40,6 +40,9 @@ def _detail_to_conversational(detail: Any) -> list[dict[str, Any]]:
     if isinstance(detail, list):
         for item in detail:
             if isinstance(item, dict):
+                if item.get("error") is True and "correction_hint" in item and "message" in item:
+                    out.append(item)
+                    continue
                 loc = item.get("loc", ())
                 field = str(loc[-1]) if loc else None
                 msg = item.get("msg", "Validation error")

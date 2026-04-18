@@ -46,6 +46,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from typing import Any
@@ -82,42 +83,74 @@ from idempotency import body_fingerprint, get_cached_json, set_cached_json
 from generator import DataGenerator, format_output
 from middleware import APIKeyMiddleware, ErrorFormatMiddleware
 from models import (
+    AiInferSchemaRequest,
+    AiInferSchemaResponse,
     AiGenerateRequest,
     CapabilityManifest,
     ConversationalError,
+    FieldDefinition,
     FieldTypeDefinition,
     GenerationRequest,
     GenerationResponse,
 )
 from validator import validate_request
 from x402_middleware import X402Middleware
+from openapi_context import (
+    build_openapi_description,
+    generation_402_response,
+    openapi_payment_components,
+    payment_public_snapshot,
+)
+from agentic.lineage import issue_lineage_receipt
+from agentic.payment_required_402 import PaymentRequired402Middleware
+from agentic.settlement_guard import (
+    SettlementContext,
+    SettlementGuardError,
+    guard_settlement_before_generation,
+)
+
+AGENTIC_ESCROW_ENABLED = os.getenv("AGENTIC_ESCROW_ENABLED", "0").lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+AGENTIC_LINEAGE_ENABLED = os.getenv("AGENTIC_LINEAGE_ENABLED", "0").lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+DATAGEN_ENV = os.getenv("DATAGEN_ENV", "development").strip().lower()
+AGENTIC_LINEAGE_STAGE = os.getenv("AGENTIC_LINEAGE_STAGE", "staging").strip().lower()
+AGENTIC_ESCROW_CANARY_PATH = os.getenv("AGENTIC_ESCROW_CANARY_PATH", "/api/v1/canary/generate")
+
+_OPENAPI_TAGS = [
+    {
+        "name": "Discovery",
+        "description": "Capabilities, catalog, health, auth, pricing — start here for agents.",
+    },
+    {
+        "name": "Generation",
+        "description": (
+            "Core synthetic data endpoints. Without `X-API-Key`, x402-protected POST routes return **402** "
+            "with facilitator `accepts[]`; optional escrow canary returns an on-chain invoice JSON."
+        ),
+    },
+    {"name": "Admin", "description": "Internal / operator routes (hidden from OpenAPI when `include_in_schema=False`)."},
+]
 
 app = FastAPI(
     title="DataGen Agentic API",
-    description="""
-Synthetic data generation API for datagen.gptlab.ae.
-
-## Dual-compatible: humans and AI agents
-
-**Human developers**: Use X-API-Key header. Get a free key at GET /api/v1/auth/free-key (rate-limited per client IP; not a login — the key is the credential for API calls).
-
-**AI agents**: Omit X-API-Key on POST /api/v1/generate to receive HTTP 402 with x402 payment
-instructions; retry with X-PAYMENT after paying.
-
-## Agent workflow
-1. GET /api/v1/capabilities — discover available field types for your tier
-2. GET /api/v1/field-types — full catalog of ~50+ canonical field types (documentation)
-3. POST /api/v1/validate — dry-run schema check (free)
-4. POST /api/v1/generate — generate data from an explicit schema
-5. POST /api/v1/generate-ai — pass column names only; AI infers types and generates rows (free: max 100 records)
-
-## Error format
-Use `Accept: application/vnd.agentic+json` to receive structured errors with hints.
-    """,
-    version="1.0.0",
+    description=(
+        "Synthetic data API — full contract (x402, Base Sepolia defaults, escrow canary) is injected into "
+        "`info.description` when OpenAPI is built so [Swagger](/api/v1/docs) always matches this deployment."
+    ),
+    version="1.1.0",
     docs_url="/api/v1/docs",
     redoc_url=None,
     openapi_url="/api/v1/openapi.json",
+    openapi_tags=_OPENAPI_TAGS,
 )
 
 app.add_middleware(
@@ -128,6 +161,8 @@ app.add_middleware(
     expose_headers=["X-Payment-Required"],
 )
 app.add_middleware(X402Middleware)
+if AGENTIC_ESCROW_ENABLED:
+    app.add_middleware(PaymentRequired402Middleware)
 app.add_middleware(APIKeyMiddleware)
 app.add_middleware(ErrorFormatMiddleware)
 
@@ -145,7 +180,137 @@ async def _open_redis() -> aioredis.Redis | None:
         return None
 
 
-@app.get("/api/v1/capabilities", response_model=None)
+async def _runtime_toggle(name: str, default: bool) -> bool:
+    redis_client = await _open_redis()
+    if redis_client is None:
+        return default
+    try:
+        raw = await redis_client.get(f"agentic:toggle:{name}")
+        if raw is None:
+            return default
+        value = str(raw).strip().lower()
+        return value in ("1", "true", "yes", "on")
+    except Exception:
+        return default
+    finally:
+        await redis_client.aclose()
+
+
+async def _metric_incr(name: str, amount: int = 1) -> None:
+    redis_client = await _open_redis()
+    if redis_client is None:
+        return
+    try:
+        await redis_client.incrby(f"agentic:metric:{name}", amount)
+    except Exception:
+        return
+    finally:
+        await redis_client.aclose()
+
+
+async def _lineage_enabled_now() -> bool:
+    if not AGENTIC_LINEAGE_ENABLED:
+        return False
+    if DATAGEN_ENV != AGENTIC_LINEAGE_STAGE:
+        return False
+    return await _runtime_toggle("lineage_enabled", True)
+
+
+async def _escrow_canary_enabled_now() -> bool:
+    if not AGENTIC_ESCROW_ENABLED:
+        return False
+    return await _runtime_toggle("canary_escrow_enabled", True)
+
+
+def _extract_payment_tx_hash(request: Request, body: GenerationRequest | AiGenerateRequest) -> str:
+    tx_hash = (getattr(body, "payment_tx_hash", None) or "").strip()
+    if tx_hash:
+        return tx_hash
+    payment_header = (request.headers.get("X-PAYMENT") or "").strip()
+    if payment_header.startswith("0x") and len(payment_header) == 66:
+        return payment_header
+    return ""
+
+
+def _lineage_payload(
+    *,
+    generation_engine: str,
+    model_version: str,
+    field_names: list[str],
+    record_count: int,
+) -> dict[str, Any] | None:
+    if not AGENTIC_LINEAGE_ENABLED:
+        return None
+    try:
+        receipt = issue_lineage_receipt(
+            generation_engine=generation_engine,
+            model_version=model_version,
+            field_names=field_names,
+            record_count=record_count,
+        )
+        return {
+            "generation_engine": receipt.generation_engine,
+            "model_version": receipt.model_version,
+            "timestamp_iso": receipt.timestamp_iso,
+            "sorted_field_names": receipt.sorted_field_names,
+            "record_count": receipt.record_count,
+            "lineage_hash": receipt.lineage_hash,
+        }
+    except Exception:
+        return None
+
+
+def _apply_locale_defaults_to_inferred_schema(
+    schema: list[dict[str, Any]], locale: str
+) -> list[dict[str, Any]]:
+    if locale not in ("en_AE", "ar_AE"):
+        return schema
+    for row in schema:
+        if row.get("type") == "phone":
+            row.setdefault("constraints", {})
+            row["constraints"]["country_code"] = "+971"
+        if row.get("type") == "iban":
+            row.setdefault("constraints", {})
+            row["constraints"].setdefault("country_prefix", "AE")
+    return schema
+
+
+def _canonical_contract_hash(schema: list[dict[str, Any]]) -> str:
+    canonical_rows: list[dict[str, Any]] = []
+    for row in schema:
+        canonical_rows.append(
+            {
+                "name": str(row.get("name", "")).strip(),
+                "type": str(row.get("type", "")).strip(),
+                "locale": str(row.get("locale", "")).strip() or None,
+                "constraints": row.get("constraints") if isinstance(row.get("constraints"), dict) else None,
+                "blankPercentage": row.get("blankPercentage"),
+            }
+        )
+    # Keep order-independent hash for deterministic contract lock.
+    canonical_rows.sort(key=lambda r: (r["name"], r["type"]))
+    payload = json.dumps(canonical_rows, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _schema_to_field_defs(schema: list[dict[str, Any]]) -> list[FieldDefinition]:
+    out: list[FieldDefinition] = []
+    for row in schema:
+        out.append(
+            FieldDefinition(
+                name=str(row.get("name", "")).strip(),
+                type=str(row.get("type", "")).strip(),
+                locale=(str(row.get("locale", "")).strip() or None),
+                constraints=row.get("constraints")
+                if isinstance(row.get("constraints"), dict)
+                else None,
+                blankPercentage=row.get("blankPercentage"),
+            )
+        )
+    return out
+
+
+@app.get("/api/v1/capabilities", response_model=None, tags=["Discovery"])
 async def capabilities(request: Request):
     tier = getattr(request.state, "tier", None) or "free"
     tier_config = TIER_CONFIG.get(tier, TIER_CONFIG["free"])
@@ -177,22 +342,49 @@ async def capabilities(request: Request):
                 },
             },
             "x402": {
-                "description": "Pay per call in USDC on Base. No account needed.",
+                "description": "Pay per call in USDC on the configured L2 (default Base Sepolia testnet). No account needed.",
                 "pricing": X402_PRICING,
                 "how_it_works": "Omit X-API-Key. Server returns 402. Pay. Retry with X-PAYMENT header.",
             },
         },
+        payment_environment=payment_public_snapshot(),
     )
     return manifest.model_dump()
 
 
-@app.get("/api/v1/field-types", response_model=None)
+@app.get("/api/v1/field-types", response_model=None, tags=["Discovery"])
 async def field_types_catalog() -> dict:
     """Full canonical field type list for integrators and LLM tool docs (not tier-filtered)."""
     return catalog_documentation_payload()
 
 
-@app.post("/api/v1/generate-ai", response_model=None)
+@app.post("/api/v1/infer-schema", response_model=AiInferSchemaResponse, tags=["Generation"])
+async def infer_schema_endpoint(body: AiInferSchemaRequest) -> dict[str, Any]:
+    """Infer explicit schema contract without generating rows."""
+    ollama_base = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434").rstrip("/")
+    model = os.getenv("OLLAMA_MODEL", "llama2")
+    schema = await infer_schema_from_field_names(
+        body.field_names,
+        domain_hint=body.domain_hint,
+        locale=body.locale,
+        ollama_host=ollama_base,
+        ollama_model=model,
+    )
+    schema = _apply_locale_defaults_to_inferred_schema(schema, body.locale)
+    return AiInferSchemaResponse(
+        proposed_schema=schema,
+        contract_hash=_canonical_contract_hash(schema),
+        contract_id=f"ctr_{uuid.uuid4().hex[:12]}",
+        locale=body.locale,
+    ).model_dump()
+
+
+@app.post(
+    "/api/v1/generate-ai",
+    response_model=None,
+    tags=["Generation"],
+    responses=generation_402_response(),
+)
 async def generate_ai(request: Request, body: AiGenerateRequest) -> Response:
     """
     AI mode: infer types from field names, then generate values (Ollama) with tier record caps.
@@ -281,14 +473,47 @@ async def generate_ai(request: Request, body: AiGenerateRequest) -> Response:
         ollama_host=ollama_base,
         ollama_model=model,
     )
-    if body.locale in ("en_AE", "ar_AE"):
-        for row in schema:
-            if row.get("type") == "phone":
-                row.setdefault("constraints", {})
-                row["constraints"]["country_code"] = "+971"
-            if row.get("type") == "iban":
-                row.setdefault("constraints", {})
-                row["constraints"].setdefault("country_prefix", "AE")
+    schema = _apply_locale_defaults_to_inferred_schema(schema, body.locale)
+
+    contract_hash = _canonical_contract_hash(schema)
+    if body.expected_contract_hash:
+        expected = body.expected_contract_hash.strip().lower()
+        if contract_hash.lower() != expected:
+            return JSONResponse(
+                {
+                    "detail": "Inferred contract hash mismatch.",
+                    "expected_contract_hash": expected,
+                    "actual_contract_hash": contract_hash,
+                },
+                status_code=409,
+            )
+
+    if body.strict_contract and any(
+        str(row.get("inference_source", "")).lower() == "heuristic" for row in schema
+    ):
+        return JSONResponse(
+            {
+                "detail": "strict_contract enabled: heuristic-inferred fields detected.",
+                "hint": "Call POST /api/v1/infer-schema, review/patch schema_fields, then POST /api/v1/generate.",
+            },
+            status_code=422,
+        )
+
+    if body.require_validate:
+        inferred_fields = _schema_to_field_defs(schema)
+        contract_errors = validate_request(
+            inferred_fields, body.count, body.locale, tier_config, tier=tier
+        )
+        if contract_errors:
+            if agentic:
+                return JSONResponse(
+                    [e.model_dump() for e in contract_errors],
+                    status_code=422,
+                )
+            return JSONResponse(
+                {"detail": [e.message for e in contract_errors]},
+                status_code=422,
+            )
 
     records = await generate_ai_records(
         schema,
@@ -343,6 +568,7 @@ async def generate_ai(request: Request, body: AiGenerateRequest) -> Response:
     payload = {
         "records": records,
         "inferred_schema": schema,
+        "inferred_contract_hash": contract_hash,
         "count": len(records),
         "locale": body.locale,
         "tier": tier,
@@ -351,6 +577,16 @@ async def generate_ai(request: Request, body: AiGenerateRequest) -> Response:
         "output_format": of,
         "generation_mode": "ai",
     }
+    if await _lineage_enabled_now():
+        lineage = _lineage_payload(
+            generation_engine="ollama",
+            model_version=os.getenv("OLLAMA_MODEL", "unknown"),
+            field_names=[str(name) for name in body.field_names],
+            record_count=len(records),
+        )
+        if lineage is not None:
+            payload["lineage_receipt"] = lineage
+            await _metric_incr("lineage_emitted_total")
     if body.output_format == "json":
         r_store = await _open_redis()
         if r_store is not None:
@@ -361,7 +597,12 @@ async def generate_ai(request: Request, body: AiGenerateRequest) -> Response:
     return JSONResponse(payload)
 
 
-@app.post("/api/v1/generate-ai/stream", response_model=None)
+@app.post(
+    "/api/v1/generate-ai/stream",
+    response_model=None,
+    tags=["Generation"],
+    responses=generation_402_response(),
+)
 async def generate_ai_stream(request: Request, body: AiGenerateRequest) -> StreamingResponse:
     """SSE progress + final JSON payload (same limits as POST /generate-ai)."""
     tier_config = getattr(request.state, "tier_config", None) or TIER_CONFIG["free"]
@@ -401,14 +642,55 @@ async def generate_ai_stream(request: Request, body: AiGenerateRequest) -> Strea
             ollama_host=ollama_base,
             ollama_model=model,
         )
-        if body.locale in ("en_AE", "ar_AE"):
-            for row in schema:
-                if row.get("type") == "phone":
-                    row.setdefault("constraints", {})
-                    row["constraints"]["country_code"] = "+971"
-                if row.get("type") == "iban":
-                    row.setdefault("constraints", {})
-                    row["constraints"].setdefault("country_prefix", "AE")
+        schema = _apply_locale_defaults_to_inferred_schema(schema, body.locale)
+        contract_hash = _canonical_contract_hash(schema)
+        if body.expected_contract_hash:
+            expected = body.expected_contract_hash.strip().lower()
+            if contract_hash.lower() != expected:
+                yield (
+                    "event: error\ndata: "
+                    + json.dumps(
+                        {
+                            "detail": "Inferred contract hash mismatch.",
+                            "expected_contract_hash": expected,
+                            "actual_contract_hash": contract_hash,
+                        },
+                        separators=(",", ":"),
+                    )
+                    + "\n\n"
+                )
+                return
+        if body.strict_contract and any(
+            str(row.get("inference_source", "")).lower() == "heuristic"
+            for row in schema
+        ):
+            yield (
+                "event: error\ndata: "
+                + json.dumps(
+                    {
+                        "detail": "strict_contract enabled: heuristic-inferred fields detected.",
+                        "hint": "Call POST /api/v1/infer-schema, review/patch schema_fields, then POST /api/v1/generate.",
+                    },
+                    separators=(",", ":"),
+                )
+                + "\n\n"
+            )
+            return
+        if body.require_validate:
+            inferred_fields = _schema_to_field_defs(schema)
+            contract_errors = validate_request(
+                inferred_fields, body.count, body.locale, tier_config, tier=tier
+            )
+            if contract_errors:
+                yield (
+                    "event: error\ndata: "
+                    + json.dumps(
+                        {"detail": [e.message for e in contract_errors]},
+                        separators=(",", ":"),
+                    )
+                    + "\n\n"
+                )
+                return
         yield f"event: schema\ndata: {json.dumps(schema, separators=(',', ':'))}\n\n"
         yield "event: status\ndata: generating_rows\n\n"
         records = await generate_ai_records(
@@ -443,6 +725,7 @@ async def generate_ai_stream(request: Request, body: AiGenerateRequest) -> Strea
         payload = {
             "records": records,
             "inferred_schema": schema,
+            "inferred_contract_hash": contract_hash,
             "count": len(records),
             "locale": body.locale,
             "tier": tier,
@@ -451,19 +734,36 @@ async def generate_ai_stream(request: Request, body: AiGenerateRequest) -> Strea
             "output_format": body.output_format,
             "generation_mode": "ai",
         }
+        if await _lineage_enabled_now():
+            lineage = _lineage_payload(
+                generation_engine="ollama",
+                model_version=os.getenv("OLLAMA_MODEL", "unknown"),
+                field_names=[str(name) for name in body.field_names],
+                record_count=len(records),
+            )
+            if lineage is not None:
+                payload["lineage_receipt"] = lineage
+                await _metric_incr("lineage_emitted_total")
         yield f"event: result\ndata: {json.dumps(payload, separators=(',', ':'))}\n\n"
         yield f"event: done\ndata: {json.dumps({'generation_id': gen_id}, separators=(',', ':'))}\n\n"
 
     return StreamingResponse(events(), media_type="text/event-stream")
 
 
-@app.post("/api/v1/generate", response_model=None)
+@app.post(
+    "/api/v1/generate",
+    response_model=None,
+    tags=["Generation"],
+    responses=generation_402_response(),
+)
 async def generate(request: Request, body: GenerationRequest) -> Response:
     tier_config = getattr(request.state, "tier_config", None) or TIER_CONFIG["free"]
     tier = getattr(request.state, "tier", None) or "free"
     agentic = "vnd.agentic+json" in request.headers.get("Accept", "")
 
-    errors = validate_request(body.schema_fields, body.count, body.locale, tier_config)
+    errors = validate_request(
+        body.schema_fields, body.count, body.locale, tier_config, tier=tier
+    )
     if errors:
         if agentic:
             return JSONResponse([e.model_dump() for e in errors], status_code=422)
@@ -486,6 +786,39 @@ async def generate(request: Request, body: GenerationRequest) -> Response:
                         )
             finally:
                 await rlim.aclose()
+
+    enforce_canary_escrow = (
+        (request.url.path == AGENTIC_ESCROW_CANARY_PATH)
+        and (not api_key)
+        and await _escrow_canary_enabled_now()
+    )
+    if enforce_canary_escrow:
+        await _metric_incr("canary_generate_calls_total")
+        tx_hash = _extract_payment_tx_hash(request, body)
+        if not body.agent_address or body.nonce is None or not tx_hash:
+            return JSONResponse(
+                {
+                    "detail": (
+                        "Escrow settlement fields required for keyless payments: "
+                        "agent_address, nonce, payment_tx_hash (or X-PAYMENT tx hash)."
+                    )
+                },
+                status_code=422,
+            )
+        try:
+            settlement_meta = await guard_settlement_before_generation(
+                SettlementContext(
+                    agent_address=body.agent_address,
+                    nonce=int(body.nonce),
+                    payment_tx_hash=tx_hash,
+                    expected_amount_micro_usdc=get_x402_price(body.count),
+                )
+            )
+            request.state.escrow_settlement_meta = settlement_meta
+            await _metric_incr("escrow_settlement_confirmed_total")
+        except SettlementGuardError as exc:
+            await _metric_incr("escrow_settlement_failed_total")
+            return JSONResponse({"detail": str(exc)}, status_code=402)
 
     records = generator.generate(
         body.schema_fields,
@@ -543,13 +876,102 @@ async def generate(request: Request, body: GenerationRequest) -> Response:
         generation_id=gen_id,
         output_format=of,
     )
-    return JSONResponse(payload.model_dump())
+    final_payload = payload.model_dump()
+    if await _lineage_enabled_now():
+        lineage = _lineage_payload(
+            generation_engine="faker",
+            model_version="faker-default",
+            field_names=[field.name for field in body.schema_fields],
+            record_count=len(records),
+        )
+        if lineage is not None:
+            final_payload["lineage_receipt"] = lineage
+            await _metric_incr("lineage_emitted_total")
+    settlement_meta = getattr(request.state, "escrow_settlement_meta", None)
+    if settlement_meta:
+        final_payload["escrow_settlement"] = settlement_meta
+    return JSONResponse(final_payload)
 
 
-@app.post("/api/v1/validate", response_model=None)
+@app.post(
+    "/api/v1/canary/generate",
+    response_model=None,
+    tags=["Generation"],
+    responses=generation_402_response(),
+)
+async def canary_generate(request: Request, body: GenerationRequest) -> Response:
+    """
+    Canary route: same body contract as `POST /api/v1/generate`.
+
+    When `AGENTIC_ESCROW_ENABLED=1`, a **keyless** POST receives **402** with an on-chain **invoice** JSON
+    (see OpenAPI `EscrowInvoice402Body`). With an API key or `X-PAYMENT`, behavior matches `/generate`.
+    """
+    return await generate(request, body)
+
+
+@app.get("/api/v1/admin/agentic/metrics", include_in_schema=False)
+async def admin_agentic_metrics() -> dict[str, Any]:
+    metric_names = [
+        "canary_generate_calls_total",
+        "escrow_settlement_confirmed_total",
+        "escrow_settlement_failed_total",
+        "lineage_emitted_total",
+    ]
+    redis_client = await _open_redis()
+    values: dict[str, int] = {name: 0 for name in metric_names}
+    if redis_client is not None:
+        try:
+            for name in metric_names:
+                values[name] = int(await redis_client.get(f"agentic:metric:{name}") or 0)
+        finally:
+            await redis_client.aclose()
+    return {
+        "environment": DATAGEN_ENV,
+        "lineage_stage": AGENTIC_LINEAGE_STAGE,
+        "lineage_static_enabled": AGENTIC_LINEAGE_ENABLED,
+        "escrow_static_enabled": AGENTIC_ESCROW_ENABLED,
+        "escrow_canary_path": AGENTIC_ESCROW_CANARY_PATH,
+        "lineage_runtime_enabled": await _runtime_toggle("lineage_enabled", True),
+        "canary_escrow_runtime_enabled": await _runtime_toggle(
+            "canary_escrow_enabled", True
+        ),
+        "metrics": values,
+    }
+
+
+@app.post("/api/v1/admin/agentic/toggles", include_in_schema=False)
+async def admin_agentic_toggles(request: Request) -> dict[str, Any]:
+    payload = await request.json()
+    redis_client = await _open_redis()
+    if redis_client is None:
+        return {
+            "updated": False,
+            "error": "Redis unavailable; runtime toggles unchanged.",
+        }
+    changed: dict[str, bool] = {}
+    try:
+        if "lineage_enabled" in payload:
+            value = bool(payload["lineage_enabled"])
+            await redis_client.set("agentic:toggle:lineage_enabled", "1" if value else "0")
+            changed["lineage_enabled"] = value
+        if "canary_escrow_enabled" in payload:
+            value = bool(payload["canary_escrow_enabled"])
+            await redis_client.set(
+                "agentic:toggle:canary_escrow_enabled", "1" if value else "0"
+            )
+            changed["canary_escrow_enabled"] = value
+        return {"updated": True, "changed": changed}
+    finally:
+        await redis_client.aclose()
+
+
+@app.post("/api/v1/validate", response_model=None, tags=["Generation"])
 async def validate_endpoint(request: Request, body: GenerationRequest):
     tier_config = getattr(request.state, "tier_config", None) or TIER_CONFIG["free"]
-    errors = validate_request(body.schema_fields, body.count, body.locale, tier_config)
+    tier = getattr(request.state, "tier", None) or "free"
+    errors = validate_request(
+        body.schema_fields, body.count, body.locale, tier_config, tier=tier
+    )
     if errors:
         return JSONResponse([e.model_dump() for e in errors], status_code=422)
     return {
@@ -559,7 +981,7 @@ async def validate_endpoint(request: Request, body: GenerationRequest):
     }
 
 
-@app.get("/api/v1/health")
+@app.get("/api/v1/health", tags=["Discovery"])
 async def health() -> dict:
     status: dict = {"api": "ok"}
     base = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434").rstrip("/")
@@ -578,7 +1000,7 @@ async def health() -> dict:
     return status
 
 
-@app.get("/api/v1/auth/free-key", response_model=None)
+@app.get("/api/v1/auth/free-key", response_model=None, tags=["Discovery"])
 async def free_key(request: Request) -> dict | JSONResponse:
     """Issue a low-privilege free-tier key. No user login — in production, per-IP rate limit uses Redis."""
     key = f"DATAGEN-FREE-{uuid.uuid4().hex[:12]}"
@@ -631,7 +1053,7 @@ async def free_key(request: Request) -> dict | JSONResponse:
         await r.aclose()
 
 
-@app.get("/api/v1/pricing")
+@app.get("/api/v1/pricing", tags=["Discovery"])
 async def pricing() -> dict:
     return {
         "api_key_tiers": {
@@ -648,7 +1070,7 @@ async def pricing() -> dict:
     }
 
 
-@app.get("/api/v1/usage", response_model=None)
+@app.get("/api/v1/usage", response_model=None, tags=["Discovery"])
 async def usage(request: Request):
     api_key = getattr(request.state, "api_key", None)
     if not api_key:
@@ -710,13 +1132,13 @@ async def admin_tier_config(request: Request) -> dict:
     return {"received": True, "note": "TODO: add admin auth before production"}
 
 
-@app.post("/api/v1/webhooks/stripe")
+@app.post("/api/v1/webhooks/stripe", include_in_schema=False)
 async def stripe_webhook() -> dict:
-    """Placeholder for Stripe billing webhooks."""
+    """Placeholder for Stripe billing webhooks (hidden from OpenAPI until wired)."""
     return {"status": "ignored", "detail": "Payment integration pending"}
 
 
-@app.get("/")
+@app.get("/", tags=["Discovery"])
 async def root() -> dict:
     return {
         "service": "datagen-api",
@@ -745,7 +1167,7 @@ _mount_mcp_http()
 
 
 def custom_openapi() -> dict:
-    """Expose optional X-API-Key in OpenAPI so Swagger UI shows Authorize."""
+    """OpenAPI: security schemes, runtime payment narrative, 402 body schemas (touchless deploy)."""
     if app.openapi_schema:
         return app.openapi_schema
     from fastapi.openapi.utils import get_openapi
@@ -757,13 +1179,29 @@ def custom_openapi() -> dict:
         description=app.description,
         routes=app.routes,
     )
-    openapi_schema.setdefault("components", {}).setdefault("securitySchemes", {})["XApiKey"] = {
+    comps = openapi_schema.setdefault("components", {})
+    schemes = comps.setdefault("securitySchemes", {})
+    schemes["XApiKey"] = {
         "type": "apiKey",
         "in": "header",
         "name": "X-API-Key",
         "description": "Optional. Issue a free key: GET /api/v1/auth/free-key",
     }
+    schemes["XPayment"] = {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-PAYMENT",
+        "description": (
+            "x402 facilitator payment payload after settling the 402 `accepts[]` challenge. "
+            "Send on retry to the same URL and JSON body."
+        ),
+    }
+    # Anonymous, or API key. X-PAYMENT is documented under components + operation descriptions (not global security).
     openapi_schema["security"] = [{}, {"XApiKey": []}]
+    schemas = comps.setdefault("schemas", {})
+    for name, frag in openapi_payment_components().items():
+        schemas[name] = frag
+    openapi_schema.setdefault("info", {})["description"] = build_openapi_description()
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 

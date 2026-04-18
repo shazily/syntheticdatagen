@@ -1,9 +1,11 @@
-fastapi>=0.110.0
-uvicorn[standard]>=0.27.0
+# Pinned stack: FastAPI 0.116.x + Starlette 1.x breaks at import (Router no longer accepts
+# on_startup/on_shutdown). Keep Starlette <1 until we intentionally adopt Starlette 1 + matching FastAPI.
+fastapi==0.128.8
+uvicorn[standard]==0.34.2
+starlette>=0.40.0,<1.0.0
 pydantic>=2.0
 redis>=5.0.0
 httpx>=0.26.0
 faker>=24.0.0
 python-multipart>=0.0.9
-starlette>=0.40.0,<0.48.0
 mcp>=1.2.0

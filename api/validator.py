@@ -37,13 +37,15 @@ def validate_request(
     count: int,
     locale: str,
     tier_config: dict,
+    tier: str = "free",
 ) -> list[ConversationalError]:
     """
     Validates a generation request against tier limits and locale rules.
     Collects ALL errors — does not short-circuit on first failure.
     Returns empty list if valid.
     """
-    from capabilities import FIELD_CATEGORY_MAP
+    from capabilities import FIELD_CATEGORY_MAP, field_visible_for_tier
+    from field_type_catalog import ALL_FIELD_TYPE_DEFINITIONS
 
     errors: list[ConversationalError] = []
     upgrade_url = "https://datagen.gptlab.ae/pricing"
@@ -85,8 +87,8 @@ def validate_request(
                     ConversationalError(
                         field=field.name,
                         message=(
-                            f"Field '{field.name}' uses type '{field.type}' (category: {category}) "
-                            f"which requires a higher tier."
+                            f"Field '{field.name}' uses type '{field.type}' "
+                            f"(category: {category}) which is not available on your current tier."
                         ),
                         correction_hint=(
                             f"Remove '{field.name}' or upgrade to Pro tier to access {category} fields."
@@ -95,6 +97,26 @@ def validate_request(
                         upgrade_url=upgrade_url,
                     )
                 )
+
+    type_def = {d["name"]: d for d in ALL_FIELD_TYPE_DEFINITIONS}
+    for field in fields:
+        defn = type_def.get(field.type)
+        if defn and not field_visible_for_tier(tier, defn):
+            fcat = defn.get("category", "unknown")
+            errors.append(
+                ConversationalError(
+                    field=field.name,
+                    message=(
+                        f"Field '{field.name}' uses type '{field.type}' "
+                        f"(category: {fcat}) which is not available on your current tier."
+                    ),
+                    correction_hint=(
+                        f"Remove '{field.name}' or upgrade to Pro tier to access {fcat} fields."
+                    ),
+                    upgrade_required=True,
+                    upgrade_url=upgrade_url,
+                )
+            )
 
     locale_rules = LOCALE_RULES.get(locale, {})
     for field in fields:
@@ -110,7 +132,8 @@ def validate_request(
                     ConversationalError(
                         field=field.name,
                         message=(
-                            f"Field '{field.name}' is missing a required constraint for locale '{locale}'."
+                            f"Field '{field.name}' (type: '{field.type}') is missing a required "
+                            f"constraint for locale '{locale}'."
                         ),
                         correction_hint=rule["hint"],
                         suggested_fix=fixed,
