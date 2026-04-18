@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-import api.agentic.settlement_guard as settlement_guard
-from api.agentic.settlement_guard import SettlementGuardError
+import agentic.settlement_guard as settlement_guard
+from agentic.settlement_guard import SettlementGuardError
 
 
 class FakeRedis:

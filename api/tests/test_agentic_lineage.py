@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from api.agentic.lineage import compute_lineage_hash, issue_lineage_receipt
+from agentic.lineage import compute_lineage_hash, issue_lineage_receipt
 
 
 def test_lineage_hash_is_deterministic(monkeypatch):

@@ -5,7 +5,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from api.agentic.payment_required_402 import PaymentRequired402Middleware
+from agentic.payment_required_402 import PaymentRequired402Middleware
 
 
 async def _generate(_request):
