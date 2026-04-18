@@ -96,7 +96,8 @@ jobs:
           MCP_E2E_GENERATE: "1"
         run: python api/tests/test_mcp_sse_client.py
 
-  # Requires repo secrets: SERVER_HOST, SERVER_USER, SERVER_SSH_KEY (private key), SERVER_REPO_PATH
+  # Secrets (Settings → Secrets): SERVER_HOST, SERVER_USER, SERVER_SSH_KEY, SERVER_REPO_PATH
+  # After secrets exist, set repo variable VPS_DEPLOY_ENABLED=true (Settings → Variables) to run this job.
   deploy:
     name: Deploy API to VPS
     runs-on: ubuntu-latest
@@ -104,7 +105,8 @@ jobs:
     if: >-
       github.repository == 'shazily/syntheticdatagen' &&
       github.ref == 'refs/heads/main' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      vars.VPS_DEPLOY_ENABLED == 'true'
     steps:
       - name: SSH — git pull + rebuild API container
         uses: appleboy/ssh-action@v1
