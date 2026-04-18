@@ -6,6 +6,10 @@
   --blog-violet: #8b5cf6;
   --blog-card-bg: rgba(26, 29, 36, 0.92);
   --blog-card-border: rgba(100, 116, 139, 0.35);
+  /* Prose links — high contrast on dark (aligned with style.css) */
+  --blog-link-inline: #7dd3fc;
+  --blog-link-inline-hover: #f0f9ff;
+  --blog-link-inline-visited: #c4b5fd;
 }
 
 /* Page shell: global body background comes from style.css (--app-atmosphere) */
@@ -42,14 +46,9 @@
   color: var(--text-primary, #e8eaed);
 }
 
-.blog-brand-mark {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(139, 92, 246, 0.25));
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  display: grid;
-  place-items: center;
+/* Lockup image: ../datagen-logo.png + .blog-brand-lockup-img in ../style.css */
+.blog-brand .blog-brand-lockup-img {
+    flex-shrink: 0;
 }
 
 .blog-brand-text strong {
@@ -263,7 +262,48 @@
 }
 
 .blog-article-meta a {
-  color: #93c5fd;
+  color: var(--blog-link-inline);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  text-decoration-color: rgba(125, 211, 252, 0.4);
+}
+
+.blog-article-meta a:hover {
+  color: var(--blog-link-inline-hover);
+  text-decoration-color: rgba(240, 249, 255, 0.55);
+}
+
+.blog-article-meta a:visited {
+  color: var(--blog-link-inline-visited);
+}
+
+.blog-article-meta a:focus-visible {
+  outline: 2px solid var(--blog-link-inline);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Body copy links (default blue is hard to read on slate) */
+.blog-article :is(p, li, blockquote, td) a {
+  color: var(--blog-link-inline);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-color: rgba(125, 211, 252, 0.42);
+}
+
+.blog-article :is(p, li, blockquote, td) a:hover {
+  color: var(--blog-link-inline-hover);
+  text-decoration-color: rgba(240, 249, 255, 0.55);
+}
+
+.blog-article :is(p, li, blockquote, td) a:visited {
+  color: var(--blog-link-inline-visited);
+}
+
+.blog-article :is(p, li, blockquote, td) a:focus-visible {
+  outline: 2px solid var(--blog-link-inline);
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 
 .blog-article h2 {
@@ -509,6 +549,20 @@
   color: #86efac;
 }
 
+/* Interactive CBDC series (in-article): match slate-900 / border-slate-700 cards */
+.blog-share.blog-share--series {
+  margin: 0 0 1.25rem;
+  padding: 1.25rem 1.35rem;
+  border-radius: 0.75rem;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(51, 65, 85, 0.65);
+  box-shadow: 0 18px 40px -28px rgba(0, 0, 0, 0.65);
+}
+
+.blog-share.blog-share--series .blog-share-title {
+  color: #64748b;
+}
+
 /* Comments */
 .blog-comments {
   margin-top: 8px;
@@ -531,4 +585,26 @@
 
 .blog-comments .utterances {
   max-width: 100%;
+}
+
+.blog-comments.blog-comments--series {
+  margin-top: 1.5rem;
+  padding: 0 0 0.5rem;
+  border-top: 1px solid rgba(51, 65, 85, 0.45);
+}
+
+.blog-comments.blog-comments--series .blog-comments-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.blog-comments.blog-comments--series .blog-comments-lead a {
+  color: #93c5fd;
+}
+
+.blog-comments.blog-comments--series .blog-comments-lead a:hover {
+  color: #e2e8f0;
 }

@@ -13,31 +13,38 @@
     
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Synthetic Data Generator V2</title>
+    <title>DataGen | Agentic Synthetic Data Platform</title>
     
-    <link rel="stylesheet" href="style.css?v=20251024010454">
+    <link rel="stylesheet" href="style.css?v=2026041805">
 </head>
-<body>
+<body class="mode-landing">
     <!-- Header -->
     <header class="header">
         <div class="header-content">
             <div class="logo-section">
-                <div class="logo">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                        <path d="M9 9h6v6H9z"/>
-                    </svg>
-                </div>
+                <h1 class="header-product-title">
+                    <a href="index.html" class="header-brand-home" aria-label="DataGen home">
+                        <img src="datagen-logo.png" alt="DataGen" width="220" height="40" class="header-brand-lockup-img" decoding="async" />
+                    </a>
+                </h1>
                 <div class="title-section">
-                    <h1>Synthetic Data Generator</h1>
-                    <p>Generate complex synthetic data with AI-powered intelligence</p>
+                    <p>Agentic synthetic data platform for schema design, AI generation, API automation, and MCP workflows.</p>
                 </div>
             </div>
             <nav class="header-actions" aria-label="Primary navigation">
-                <a href="index.html" class="feedback-button-header doc-nav-active" aria-current="page" title="Schema Builder and AI app (you are here)">
+                <a href="index.html" id="nav-home-link" class="feedback-button-header" title="DataGen home">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                         <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                    <span>Home</span>
+                </a>
+                <a href="index.html?app=1" id="nav-app-link" class="feedback-button-header" title="DataGen app workspace">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/>
+                        <rect x="14" y="14" width="7" height="7" rx="1"/>
                     </svg>
                     <span>App</span>
                 </a>
@@ -79,6 +86,100 @@
         </div>
     </header>
 
+    <section class="showcase-shell" aria-label="Product showcase">
+        <div class="showcase-bg"></div>
+        <div class="showcase-intro">
+            <h2>From idea to production-ready data workflows in one screen</h2>
+            <p>
+                This guided showcase auto-scrolls through core capabilities:
+                schema design, AI generation, API automation, MCP tools, and Web3-ready monetization.
+            </p>
+            <div class="showcase-actions">
+                <a href="index.html?app=1" class="btn-primary">Launch Builder Workspace</a>
+                <a href="features.html" class="btn-secondary">View Full Features</a>
+            </div>
+        </div>
+
+        <div class="showcase-viewport" id="showcase-viewport">
+            <article class="showcase-slide is-active">
+                <div class="showcase-slide-top">
+                    <span class="showcase-slide-icon" aria-hidden="true">🎯</span>
+                    <div class="showcase-slide-head">
+                        <span class="showcase-slide-tag">Visual authoring</span>
+                        <h3>Drag-and-drop schema builder</h3>
+                    </div>
+                </div>
+                <ul class="showcase-slide-summary">
+                    <li>30+ field types with categories and drag targets</li>
+                    <li>Per-field blanks, reorder, and schema validation</li>
+                    <li>Preview, SQL, and multi-format export (CSV, XLSX, JSON, XML)</li>
+                </ul>
+                <p>Design production-shaped tables without leaving the canvas.</p>
+            </article>
+            <article class="showcase-slide">
+                <div class="showcase-slide-top">
+                    <span class="showcase-slide-icon" aria-hidden="true">🤖</span>
+                    <div class="showcase-slide-head">
+                        <span class="showcase-slide-tag">Agentic AI</span>
+                        <h3>Natural language → schema &amp; samples</h3>
+                    </div>
+                </div>
+                <ul class="showcase-slide-summary">
+                    <li>Topic or pasted examples to infer columns</li>
+                    <li>Optional contract path: infer-schema → validate → generate-ai</li>
+                    <li>SSE streaming and idempotent AI runs where enabled</li>
+                </ul>
+                <p>Iterate fast with AI that respects structure and guardrails.</p>
+            </article>
+            <article class="showcase-slide">
+                <div class="showcase-slide-top">
+                    <span class="showcase-slide-icon" aria-hidden="true">⚡</span>
+                    <div class="showcase-slide-head">
+                        <span class="showcase-slide-tag">Developer ready</span>
+                        <h3>REST API &amp; OpenAPI</h3>
+                    </div>
+                </div>
+                <ul class="showcase-slide-summary">
+                    <li><code>/api/v1</code> health, capabilities, field-types, validate</li>
+                    <li>Deterministic <code>generate</code> plus <code>infer-schema</code> / <code>generate-ai</code></li>
+                    <li><code>X-API-Key</code>, machine-readable errors, downloadable .http samples</li>
+                </ul>
+                <p>Wire agents and CI the same way you’d wire any first-party API.</p>
+            </article>
+            <article class="showcase-slide">
+                <div class="showcase-slide-top">
+                    <span class="showcase-slide-icon" aria-hidden="true">🧩</span>
+                    <div class="showcase-slide-head">
+                        <span class="showcase-slide-tag">MCP native</span>
+                        <h3>Tools, resources &amp; prompts</h3>
+                    </div>
+                </div>
+                <ul class="showcase-slide-summary">
+                    <li>stdio connector for local IDEs + hosted <code>/mcp/sse</code></li>
+                    <li>Same auth model as HTTP (<code>X-API-Key</code>)</li>
+                    <li>Drop-in JSON configs for Cursor-style clients</li>
+                </ul>
+                <p>Let assistants call DataGen as a first-class MCP server.</p>
+            </article>
+            <article class="showcase-slide">
+                <div class="showcase-slide-top">
+                    <span class="showcase-slide-icon" aria-hidden="true">⛓️</span>
+                    <div class="showcase-slide-head">
+                        <span class="showcase-slide-tag">Web3 rails</span>
+                        <h3>x402 &amp; Base Sepolia</h3>
+                    </div>
+                </div>
+                <ul class="showcase-slide-summary">
+                    <li>Paid generation paths for autonomous agents</li>
+                    <li>Escrow-aware flows and canary invoice samples</li>
+                    <li>Monetized runbooks in-repo for API &amp; MCP</li>
+                </ul>
+                <p>Prototype machine-to-machine settlement without bolting on a second product.</p>
+            </article>
+        </div>
+    </section>
+
+    <section id="workspace" class="workspace-section">
     <div class="container">
         <!-- Key Features Banner -->
         <section class="key-features-banner">
@@ -123,6 +224,21 @@
                     <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z"/>
                 </svg>
                 A.I Mode
+            </button>
+            <button class="tab-btn" data-tab="api">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="16 18 22 12 16 6"></polyline>
+                    <polyline points="8 6 2 12 8 18"></polyline>
+                </svg>
+                API
+            </button>
+            <button class="tab-btn" data-tab="mcp">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"></path>
+                    <path d="M6 10h12v3a6 6 0 0 1-12 0v-3z"></path>
+                    <path d="M9 19v3M15 19v3"></path>
+                </svg>
+                MCP
             </button>
         </div>
 
@@ -615,15 +731,119 @@
             </div>
         </div>
 
+        <div class="tab-content" id="api-tab">
+            <div class="integration-layout">
+                <div class="integration-summary">
+                    <span class="integration-badge">HTTP API</span>
+                    <h3>Scripts, endpoints, and payloads</h3>
+                    <p>
+                        Production API base: <code>https://datagen.gptlab.ae/api/v1</code><br>
+                        Auth header: <code>X-API-Key: DATAGEN-...</code><br>
+                        Optional deduplication: <code>Idempotency-Key</code> for <code>/generate-ai</code>.
+                    </p>
+                    <div class="endpoint-grid">
+                        <div class="endpoint-card">
+                            <h4>Core endpoints</h4>
+                            <ul>
+                                <li><code>GET /health</code></li>
+                                <li><code>GET /capabilities</code></li>
+                                <li><code>GET /field-types</code></li>
+                                <li><code>POST /validate</code></li>
+                                <li><code>POST /generate</code></li>
+                                <li><code>POST /infer-schema</code></li>
+                                <li><code>POST /generate-ai</code></li>
+                                <li><code>POST /generate-ai/stream</code></li>
+                            </ul>
+                        </div>
+                        <div class="endpoint-card">
+                            <h4>Starter script (curl)</h4>
+                            <pre class="integration-code"><code>curl -X POST "https://datagen.gptlab.ae/api/v1/infer-schema" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: DATAGEN-FREE-REPLACE_ME" \
+  -d '{"prompt":"payments dataset","field_count":8}'</code></pre>
+                        </div>
+                        <div class="endpoint-card">
+                            <h4>Guarded AI generation</h4>
+                            <pre class="integration-code"><code>curl -X POST "https://datagen.gptlab.ae/api/v1/generate-ai" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: DATAGEN-FREE-REPLACE_ME" \
+  -H "Idempotency-Key: ai-run-001" \
+  -d '{"prompt":"payments dataset","record_count":100}'</code></pre>
+                        </div>
+                    </div>
+                    <div class="integration-actions integration-actions--samples">
+                        <a href="../docs/agentic-api-series/samples/rest-normal-schema-mode.http" class="btn-secondary" download>Download Schema-mode .http</a>
+                        <a href="../docs/agentic-api-series/samples/rest-agentic-contract-first.http" class="btn-secondary" download>Download Contract-first .http</a>
+                        <a href="../docs/agentic-api-series/samples/rest-agentic-ai-mode.http" class="btn-secondary" download>Download AI-mode .http</a>
+                        <a href="../docs/agentic-api-series/samples/rest-monetized-base-sepolia.http" class="btn-secondary" download>Download x402 .http</a>
+                    </div>
+                    <p class="integration-doc-note" style="margin-top: 16px; font-size: 0.9rem; color: var(--text-secondary);">
+                        <strong>Interactive CBDC / agentic series:</strong>
+                        <a href="blog/interactive-cbdc/live/index.html">Open the live walkthrough</a> (blog → built interactive).
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="mcp-tab">
+            <div class="integration-layout">
+                <div class="integration-summary">
+                    <span class="integration-badge integration-badge--mcp">MCP</span>
+                    <h3>Connection strings and MCP-ready configs</h3>
+                    <p>
+                        Hosted SSE endpoint: <code>https://datagen.gptlab.ae/mcp/sse</code><br>
+                        Required header (paid/private tiers): <code>X-API-Key: DATAGEN-...</code><br>
+                        Local stdio runner: <code>python mcp_datagen/server.py</code>.
+                    </p>
+                    <div class="endpoint-grid">
+                        <div class="endpoint-card">
+                            <h4>Remote MCP config</h4>
+                            <pre class="integration-code"><code>{
+  "server_url": "https://datagen.gptlab.ae/mcp/sse",
+  "headers": {
+    "X-API-Key": "DATAGEN-FREE-REPLACE_ME"
+  }
+}</code></pre>
+                        </div>
+                        <div class="endpoint-card">
+                            <h4>Local stdio connection</h4>
+                            <pre class="integration-code"><code>DATAGEN_API_BASE=https://datagen.gptlab.ae
+DATAGEN_API_KEY=DATAGEN-FREE-REPLACE_ME
+python mcp_datagen/server.py</code></pre>
+                        </div>
+                        <div class="endpoint-card">
+                            <h4>Tool groups exposed</h4>
+                            <ul>
+                                <li><code>health</code>, <code>catalog</code>, <code>capabilities</code></li>
+                                <li><code>validate</code>, <code>generate</code></li>
+                                <li><code>infer-schema</code>, <code>generate-ai</code>, stream transcript</li>
+                                <li>Resources: field-types, OpenAPI, capabilities</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="integration-actions integration-actions--samples">
+                        <a href="../docs/agentic-api-series/samples/mcp-normal-schema-mode.json" class="btn-secondary" download>Download MCP schema-mode</a>
+                        <a href="../docs/agentic-api-series/samples/mcp-agentic-ai-mode.json" class="btn-secondary" download>Download MCP AI-mode</a>
+                        <a href="../docs/agentic-api-series/samples/mcp-monetized-base-sepolia.md" class="btn-secondary" download>Download MCP x402 runbook</a>
+                    </div>
+                    <p class="integration-doc-note" style="margin-top: 16px; font-size: 0.9rem; color: var(--text-secondary);">
+                        <strong>Interactive CBDC / agentic series:</strong>
+                        <a href="blog/interactive-cbdc/live/index.html">Open the live walkthrough</a> (blog → built interactive).
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <!-- Loading Overlay -->
         <div class="loading-overlay" id="loading-overlay">
-            <div class="loading-spinner"></div>
+            <div class="loading-dots" aria-hidden="true"><span></span><span></span><span></span></div>
             <p id="loading-text">Generating data...</p>
         </div>
 
             <!-- Toast Notification Container -->
             <div id="toast-container" class="toast-container"></div>
         </div>
+    </section>
 
         <!-- Modal System -->
         <div id="modal-overlay" class="modal-overlay" onclick="closeModal()">
@@ -636,17 +856,28 @@
     <footer class="footer">
         <div class="footer-content">
             <div class="footer-left">
-                <p>&copy; 2025 Synthetic Data Generator. Free for general public use.</p>
+                <p>&copy; 2025 DataGen. Free for general public use.</p>
             </div>
-                <div class="footer-right">
-                    <p><a href="https://github.com/shazily/syntheticdatagen" target="_blank" rel="noopener" class="footer-legal-link">GitHub</a> • <a href="changelog.html" class="changelog-link">
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                            <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM1.5 8a6.5 6.5 0 1 1 13 0 6.5 6.5 0 0 1-13 0z"/>
-                            <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 0-1H8V3.5z"/>
-                        </svg>
+            <nav class="footer-links" aria-label="Site footer">
+                <a href="https://www.linkedin.com/in/shazilymunawar/" class="linkedin-link linkedin-link--datagen" target="_blank" rel="noopener noreferrer" title="Shazily Munawar on LinkedIn">
+                    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                    LinkedIn
+                </a>
+                <span class="footer-sep" aria-hidden="true">·</span>
+                <a href="https://github.com/shazily/syntheticdatagen" target="_blank" rel="noopener noreferrer" class="footer-legal-link">GitHub</a>
+                <span class="footer-sep" aria-hidden="true">·</span>
+                <a href="changelog.html" class="changelog-link">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                        <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM1.5 8a6.5 6.5 0 1 1 13 0 6.5 6.5 0 0 1-13 0z"/>
+                        <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 0-1H8V3.5z"/>
+                    </svg>
                     Changelog
-                </a> • <a href="privacy.html" class="footer-legal-link">Privacy</a> • <a href="terms.html" class="footer-legal-link">Terms</a></p>
-                </div>
+                </a>
+                <span class="footer-sep" aria-hidden="true">·</span>
+                <a href="privacy.html" class="footer-legal-link">Privacy</a>
+                <span class="footer-sep" aria-hidden="true">·</span>
+                <a href="terms.html" class="footer-legal-link">Terms</a>
+            </nav>
         </div>
     </footer>
 
@@ -708,7 +939,7 @@
     
     <!-- Application Scripts -->
     <script src="schema-builder.js?v=4"></script>
-    <script src="app.js?v=20251024010454"></script>
+    <script src="app.js?v=2026041701"></script>
     <script src="modal-functions.js?v=3"></script>
     <script src="analytics.js?v=2"></script>
 </body>

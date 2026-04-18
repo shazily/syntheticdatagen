@@ -95,6 +95,87 @@ function initTabs() {
     });
 }
 
+function initPageMode() {
+    const params = new URLSearchParams(window.location.search);
+    const isAppMode = params.get('app') === '1';
+    const body = document.body;
+    if (!body) return false;
+
+    body.classList.toggle('mode-app', isAppMode);
+    body.classList.toggle('mode-landing', !isAppMode);
+
+    const appNavLink = document.getElementById('nav-app-link');
+    const homeNavLink = document.getElementById('nav-home-link');
+
+    if (homeNavLink) {
+        if (isAppMode) {
+            homeNavLink.classList.remove('doc-nav-active');
+            homeNavLink.removeAttribute('aria-current');
+        } else {
+            homeNavLink.classList.add('doc-nav-active');
+            homeNavLink.setAttribute('aria-current', 'page');
+        }
+    }
+
+    if (appNavLink) {
+        if (isAppMode) {
+            appNavLink.classList.add('doc-nav-active');
+            appNavLink.setAttribute('aria-current', 'page');
+            appNavLink.title = 'DataGen app workspace (you are here)';
+        } else {
+            appNavLink.classList.remove('doc-nav-active');
+            appNavLink.removeAttribute('aria-current');
+            appNavLink.title = 'Open the DataGen app workspace';
+        }
+    }
+
+    return isAppMode;
+}
+
+function initShowcaseAutoscroll() {
+    if (document.body && document.body.classList.contains('mode-app')) return;
+    const viewport = document.getElementById('showcase-viewport');
+    if (!viewport) return;
+
+    const slides = Array.from(viewport.querySelectorAll('.showcase-slide'));
+    if (slides.length <= 1) return;
+
+    const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let activeIndex = 0;
+    let timer = null;
+    let paused = false;
+
+    const setActive = (index) => {
+        activeIndex = (index + slides.length) % slides.length;
+        slides.forEach((slide, i) => {
+            slide.classList.toggle('is-active', i === activeIndex);
+        });
+    };
+
+    const tick = () => {
+        if (paused) return;
+        setActive(activeIndex + 1);
+    };
+
+    if (!reducedMotion) {
+        timer = window.setInterval(tick, 3400);
+    }
+
+    viewport.addEventListener('mouseenter', () => { paused = true; });
+    viewport.addEventListener('mouseleave', () => { paused = false; });
+    viewport.addEventListener('focusin', () => { paused = true; });
+    viewport.addEventListener('focusout', () => { paused = false; });
+    viewport.addEventListener('touchstart', () => { paused = true; }, { passive: true });
+
+    setActive(0);
+
+    window.addEventListener('beforeunload', () => {
+        if (timer) {
+            window.clearInterval(timer);
+        }
+    });
+}
+
 // Loading Overlay
 function showLoading(message = 'Generating data...') {
     const overlay = document.getElementById('loading-overlay');
@@ -1128,7 +1209,7 @@ function openAIPreviewModal() {
             </div>
             <div class="preview-content" id="modal-preview-content">
                 <div class="loading-spinner">
-                    <div class="spinner"></div>
+                    <div class="loading-dots" aria-hidden="true"><span></span><span></span><span></span></div>
                     <p>Loading preview data...</p>
                 </div>
             </div>
@@ -1448,7 +1529,9 @@ async function submitRating(rating) {
 
 // Enter key support for chat and topic input
 document.addEventListener('DOMContentLoaded', () => {
+    initPageMode();
     initTabs();
+    initShowcaseAutoscroll();
     
     // Download button will be disabled when it becomes visible
 
@@ -1562,7 +1645,7 @@ function openPreviewModal() {
             </div>
             <div id="modal-preview-content" class="preview-content">
                 <div class="loading-spinner">
-                    <div class="spinner"></div>
+                    <div class="loading-dots" aria-hidden="true"><span></span><span></span><span></span></div>
                     <p>Generating preview data...</p>
                 </div>
             </div>
@@ -2266,9 +2349,9 @@ async function refreshAIPreview() {
         const tableContainer = document.getElementById('table-preview-data');
         if (tableContainer) {
             tableContainer.innerHTML = `
-                <div style="text-align: center; padding: 40px;">
-                    <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid var(--border-color); border-top: 4px solid var(--accent-primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                    <p style="margin-top: 16px; color: var(--text-secondary);">Refreshing your preview... please wait</p>
+                <div class="preview-refresh-loading">
+                    <div class="loading-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                    <p>Refreshing your preview... please wait</p>
                 </div>
             `;
         }

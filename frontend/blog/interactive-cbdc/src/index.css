@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+/* Root at least one viewport tall; grows with content for document scroll */
+#root {
+  min-height: 100dvh;
+}
+
+body {
+  overflow-x: hidden;
+  overflow-y: auto;
+}

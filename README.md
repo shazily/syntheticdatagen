@@ -17,6 +17,14 @@ An intelligent synthetic data platform: **Schema Builder** and **AI Mode** in th
 - **MCP** — `datagen_mcp_app.py` exposes tools, resources, and prompts; **stdio** connector under `mcp_datagen/`. HTTP/SSE is mounted on the API process (e.g. `/mcp` behind nginx). See `frontend/api-developer-info.html` and `frontend/mcp-developer-info.html` in the static site for human-readable overviews.
 - **Do not commit** local vector data: `qdrant_storage/` is listed in `.gitignore`; keep secrets in `.env` (see `env.example`), never in the repo.
 
+### Safe rollout flags (touchless default)
+
+- `AGENTIC_LINEAGE_ENABLED=0` by default and only active when `DATAGEN_ENV=staging` (or `AGENTIC_LINEAGE_STAGE` override).
+- `AGENTIC_ESCROW_ENABLED=0` by default; when enabled it adds invoice-style 402 **only** on canary `POST /api/v1/canary/generate` (`AGENTIC_ESCROW_CANARY_PATH`). Default **x402 facilitator** middleware stays on `/api/v1/generate` and generate-ai paths so existing keyless flows are unchanged.
+- Runtime rollback toggles (Redis-backed): `lineage_enabled` and `canary_escrow_enabled` via `POST /api/v1/admin/agentic/toggles`.
+- Observability snapshot: `GET /api/v1/admin/agentic/metrics` returns phase metrics and current toggle states.
+- Contract deployment helper: `scripts/deploy_escrowx402.py` (Base Sepolia defaults; explicit env vars required).
+
 ## ✨ Key Features
 
 ### 🎯 **Dual Generation Modes**

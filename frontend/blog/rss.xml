@@ -5,8 +5,15 @@
     <link>https://datagen.gptlab.ae/blog/</link>
     <description>Build notes, API &amp; MCP deep-dives, and agentic payments from the DataGen team.</description>
     <language>en</language>
-    <lastBuildDate>Sat, 12 Apr 2026 00:00:00 GMT</lastBuildDate>
+    <lastBuildDate>Fri, 18 Apr 2026 00:00:00 GMT</lastBuildDate>
     <atom:link href="https://datagen.gptlab.ae/blog/rss.xml" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>Agentic AI, CBDC, MCP — interactive series (full page)</title>
+      <link>https://datagen.gptlab.ae/blog/interactive-cbdc/live/index.html</link>
+      <guid isPermaLink="true">https://datagen.gptlab.ae/blog/interactive-cbdc/live/index.html</guid>
+      <pubDate>Fri, 18 Apr 2026 00:00:00 GMT</pubDate>
+      <description>Live in-browser walkthrough: programmable money, A2A, contracts, 402, escrow, orchestration.</description>
+    </item>
     <item>
       <title>From drag-and-drop to autonomous agents: DataGen’s HTTP API, MCP, and x402</title>
       <link>https://datagen.gptlab.ae/blog/agentic-api-mcp-x402.html</link>

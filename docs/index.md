@@ -62,3 +62,7 @@ Full changelog: open **Changelog** in the app, or see [changelog.md](changelog.m
 - **Working files (what’s essential):** [WORKING_FILES.md](../WORKING_FILES.md)  
 - **Architecture:** [ARCHITECTURE.md](../ARCHITECTURE.md)  
 - **API (Flask):** [API.md](../API.md) (when running `app.py`)
+
+### Agentic CBDC interactive series (live site)
+
+The shipped UI is built into the static frontend: open **`frontend/blog/interactive-cbdc/live/index.html`** on [datagen.gptlab.ae](https://datagen.gptlab.ae/) under **Blog** (full interactive + eight `live/part-*.html` chapter URLs). Source for editors / MDX pipelines: [AgenticInteractiveBlog.jsx](agentic-api-series/interactive-cbdc-blog/AgenticInteractiveBlog.jsx) and the [interactive-cbdc-blog](agentic-api-series/interactive-cbdc-blog/) MDX wrappers. Rebuild after edits: `cd frontend/blog/interactive-cbdc && npm run build`.
